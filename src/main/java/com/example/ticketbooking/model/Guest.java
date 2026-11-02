@@ -3,6 +3,7 @@ package com.example.ticketbooking.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class Guest {
     @Column(name = "passport_number")
     private String passportNumber;
 
+    @Pattern(regexp = "^\\+[1-9]\\d{1,14}$")
     @Column(name = "phone_number")
     @NotBlank(message = "Phone number has to be entered")
     private String phoneNumber;
