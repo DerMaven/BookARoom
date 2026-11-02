@@ -170,6 +170,7 @@ public class GuestService {
         Optional<Guest> guestCache = redisCacheService.get(String.valueOf(guestId), Guest.class);
         if (guestCache.isPresent()) {
             Guest guest = guestCache.get();
+
             if (request.firstName().isPresent()) guest.setFirstName(request.firstName().get());
             if (request.lastName().isPresent()) guest.setLastName(request.lastName().get());
             if (request.birthDate().isPresent()) guest.setBirthDate(request.birthDate().get());
@@ -185,11 +186,10 @@ public class GuestService {
             );
         }
 
-        Guest guest = guestRepository.findById(guestId)
-                .orElseThrow(() -> new GuestNotFoundException("Гость не существует в базе данных"));
-
         try {
             em.getTransaction().begin();
+
+            Guest guest = em.find(Guest.class, guestId);
 
             if (request.firstName().isPresent()) guest.setFirstName(request.firstName().get());
             if (request.lastName().isPresent()) guest.setLastName(request.lastName().get());
