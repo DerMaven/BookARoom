@@ -10,6 +10,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.MappingException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -20,7 +21,6 @@ import java.util.Optional;
 public class GuestService {
     private final GuestRepository guestRepository;
     private final RedisCacheService redisCacheService;
-    private final RedisLockService redisLockService;
 
     public GuestDto getById(Long guestId) {
         Optional<Guest> guestCache = redisCacheService.get(String.valueOf(guestId), Guest.class);
@@ -159,5 +159,10 @@ public class GuestService {
         } finally {
             em.close();
         }
+    }
+
+    public Guest mapDtoToEntity(GuestDto dto) {
+        return guestRepository.findById(dto.guestId())
+                .orElseThrow(() -> new MappingException("Ошибка преобразования сущности"));
     }
 }

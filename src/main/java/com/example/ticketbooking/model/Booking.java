@@ -1,5 +1,6 @@
 package com.example.ticketbooking.model;
 
+import com.example.ticketbooking.dto.GuestDto;
 import com.example.ticketbooking.model.enums.BookingStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -12,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "bookings", indexes = {
@@ -53,8 +55,16 @@ public class Booking {
     private BookingStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "guest_id")
-    private Guest guest;
+    @JoinTable(name = "primary_guest_id")
+    private Guest primaryGuest;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "guests",
+            joinColumns = { @JoinColumn(name = "guest_id") },
+            inverseJoinColumns = { @JoinColumn(name = "booking_id") }
+    )
+    private List<Guest> guests;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id")

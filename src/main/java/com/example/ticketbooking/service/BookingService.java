@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -36,8 +37,9 @@ public class BookingService {
     @Qualifier("refundService")
     private final MoneyService refundService;
     private final InventoryService inventoryService;
+    private final GuestService guestService;
 
-    public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long guestId, PaymentMethod paymentMethod, LocalDate checkIn, LocalDate checkOut) {
+    public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long primaryGuestId, List<Long> guestIds, PaymentMethod paymentMethod, LocalDate checkIn, LocalDate checkOut) {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("createBooking");
         EntityManager em = emf.createEntityManager();
 
@@ -62,8 +64,17 @@ public class BookingService {
             booking.setStatus(BookingStatus.CREATED);
             booking.setCreatedAt(LocalDateTime.now());
 
-            Guest guest = em.find(Guest.class, guestId);
-            booking.setGuest(guest);
+            Guest primaryGuest = em.find(Guest.class, primaryGuestId);
+            booking.setPrimaryGuest(primaryGuest);
+
+            List<Guest> guests = guestIds.stream()
+                    .map(guestService::getById)
+                    .map(guestService::mapDtoToEntity)
+                            .toList();
+            if (guests.size() > booking.getRoom().getMaxOccupancy()) {
+                throw new RoomMaxOccupancyException("Превышен порог заселения");
+            }
+            booking.setGuests(guests);
 
             Hotel hotel = em.find(Hotel.class, hotelId);
             booking.setHotel(hotel);
@@ -176,7 +187,7 @@ public class BookingService {
             if (!(booking.getStatus() == BookingStatus.CONFIRMED)) {
                 throw new BookingStatusException("Бронь не была подтверждена, чтобы ее отменять");
             }
-            if (!(Objects.equals(guest.getId(), booking.getGuest().getId()))) {
+            if (!(Objects.equals(guest.getId(), booking.getPrimaryGuest().getId()))) {
                 throw new BookingNotBelongsToGuestException("Бронь не принадлежит гостю. чтобы он мог ее отменить");
             }
 
