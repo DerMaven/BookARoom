@@ -10,7 +10,7 @@ import java.util.Optional;
 public interface RoomRepository extends JpaRepository<Room, Long> {
 
     @Query(value = "select r from Room r where r.hotel.id = :hotelId order by r.status limit :size")
-    List<Room> findAllByHotel(Long hotelId, Long size);
+    List<Room> findAllByHotelId(Long hotelId, Long size);
 
     @Query(value = "select r from Room r where r.hotel.id = :hotelId order by r.status")
     Optional<Room> findByHotel(Long hotelId);
