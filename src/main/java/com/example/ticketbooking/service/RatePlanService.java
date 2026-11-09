@@ -50,6 +50,7 @@ public class RatePlanService {
                 plan.getId(),
                 String.valueOf(plan.getMenuPlan()),
                 plan.getPrice(),
+                plan.getCurrency(),
                 plan.getBeds(),
                 plan.getMaxNightsStay(),
                 plan.getIsActive()

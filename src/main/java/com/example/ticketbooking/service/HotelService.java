@@ -1,8 +1,7 @@
 package com.example.ticketbooking.service;
 
-import com.example.ticketbooking.exception.GuestNotFoundException;
+import com.example.ticketbooking.dto.RatePlanDto;
 import com.example.ticketbooking.exception.HotelNotFoundException;
-import com.example.ticketbooking.model.Guest;
 import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.model.RatePlan;
 import com.example.ticketbooking.model.enums.Currency;
@@ -12,20 +11,25 @@ import com.example.ticketbooking.repository.RatePlanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class HotelService {
-    private final RatePlanRepository ratePlanRepository;
+    private final RatePlanService ratePlanService;
     private final HotelRepository hotelRepository;
 
-    public Hotel getById(Long hotel) {
-        return hotelRepository.findById(hotel)
+    public Hotel getById(Long hotelID) {
+        return hotelRepository.findById(hotelID)
                 .orElseThrow(() -> new HotelNotFoundException("Отель не был найден"));
     }
 
-    public RatePlan getRatePlan(Long ratePlanId) {
-        return ratePlanRepository.findById(ratePlanId)
-                .orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден"));
+    public List<RatePlanDto> getAllRatePlans(Long hotelId, Long size) {
+        return ratePlanService.getByAllHotelId(hotelId, size);
+    }
+
+    public RatePlanDto getRatePlan(Long hotelId, Long ratePlanId) {
+        return ratePlanService.getByHotelId(hotelId, ratePlanId);
     }
 
     public Currency getCurrency(Long hotelId) {

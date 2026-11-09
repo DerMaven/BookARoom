@@ -113,7 +113,7 @@ public class BookingService {
             inventory.setBookingStock(inventory.getBookingStock() + 1);
 
             Currency hotelCurrency = hotelService.getCurrency(hotelId);
-            Currency ratePlanCurrency = Currency.valueOf(hotelService.getRatePlan(ratePlanId).getCurrency());
+            Currency ratePlanCurrency = Currency.valueOf(hotelService.getRatePlan(hotelId, ratePlanId).currency());
             if (!paymentService.isHotelAndRatePlanCurrenciesEqual(hotelCurrency, ratePlanCurrency)) {
                 em.getTransaction().rollback();
             }
@@ -146,22 +146,8 @@ public class BookingService {
             em.flush();
             em.getTransaction().commit();
 
-            BookingDto dto = new BookingDto(
-                    booking.getId(),
-                    roomId,
-                    room.getRoomType(),
-                    checkIn,
-                    checkOut,
-                    nights,
-                    ratePlan.getPrice().longValue(),
-                    payment.getAmount(),
-                    ratePlanCurrency,
-                    true,
-                    ratePlan.getId()
-                    );
             redisCacheService.set("booking", String.valueOf(booking.getId()), Duration.ofMinutes(30));
-
-            return dto;
+            return mapBookingToDto(booking, paymentService.mapPaymentToDto(payment));
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new BookingCreationException("Возникла ошибка при создании брони");
@@ -222,21 +208,7 @@ public class BookingService {
             em.flush();
             em.getTransaction().commit();
 
-            BookingDto dto = new BookingDto(
-                    booking.getId(),
-                    booking.getRoom().getId(),
-                    booking.getRoom().getRoomType(),
-                    booking.getCheckIn(),
-                    booking.getCheckOut(),
-                    nights,
-                    booking.getRatePlan().getPrice().longValue(),
-                    payment.amount(),
-                    payment.currency(),
-                    false,
-                    booking.getRatePlan().getId()
-            );
-
-            return dto;
+            return mapBookingToDto(booking, payment);
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new BookingCancellationException("Возникла ошибка при отмене брони");
@@ -252,37 +224,13 @@ public class BookingService {
             Booking booking = bookingCache.orElseThrow(() -> new BookingNotFoundException("Бронь не была найдена в кэше"));
             redisCacheService.set(String.valueOf(reference), booking, Duration.ofMinutes(5));
             PaymentDto payment = paymentService.getByBookingId(booking.getId());
-            return new BookingDto(
-                    booking.getId(),
-                    booking.getRoom().getId(),
-                    booking.getRoom().getRoomType(),
-                    booking.getCheckIn(),
-                    booking.getCheckOut(),
-                    booking.getNights().longValue(),
-                    booking.getRatePlan().getPrice().longValue(),
-                    payment.amount(),
-                    payment.currency(),
-                    true,
-                    booking.getRatePlan().getId()
-            );
+            return mapBookingToDto(booking, payment);
         }
         Booking booking = bookingRepository.findByReference(reference)
                 .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
         redisCacheService.set(String.valueOf(booking.getId()), booking, Duration.ofMinutes(20));
         PaymentDto payment = paymentService.getByBookingId(booking.getId());
-        return new BookingDto(
-                booking.getId(),
-                booking.getRoom().getId(),
-                booking.getRoom().getRoomType(),
-                booking.getCheckIn(),
-                booking.getCheckOut(),
-                booking.getNights().longValue(),
-                booking.getRatePlan().getPrice().longValue(),
-                payment.amount(),
-                payment.currency(),
-                true,
-                booking.getRatePlan().getId()
-        );
+        return mapBookingToDto(booking, payment);
     }
 
     public BookingDto getByGuestId(Long guestId) {
@@ -291,37 +239,13 @@ public class BookingService {
             Booking booking = bookingCache.orElseThrow(() -> new BookingNotFoundException("Бронь не была найдена в кэше"));
             redisCacheService.set(String.valueOf(guestId), booking, Duration.ofMinutes(5));
             PaymentDto payment = paymentService.getByBookingId(guestId);
-            return new BookingDto(
-                    booking.getId(),
-                    booking.getRoom().getId(),
-                    booking.getRoom().getRoomType(),
-                    booking.getCheckIn(),
-                    booking.getCheckOut(),
-                    booking.getNights().longValue(),
-                    booking.getRatePlan().getPrice().longValue(),
-                    payment.amount(),
-                    payment.currency(),
-                    true,
-                    booking.getRatePlan().getId()
-            );
+            return mapBookingToDto(booking, payment);
         }
         Booking booking = bookingRepository.findById(guestId)
                 .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
         redisCacheService.set(String.valueOf(booking.getId()), booking, Duration.ofMinutes(20));
         PaymentDto payment = paymentService.getByBookingId(booking.getId());
-        return new BookingDto(
-                booking.getId(),
-                booking.getRoom().getId(),
-                booking.getRoom().getRoomType(),
-                booking.getCheckIn(),
-                booking.getCheckOut(),
-                booking.getNights().longValue(),
-                booking.getRatePlan().getPrice().longValue(),
-                payment.amount(),
-                payment.currency(),
-                true,
-                booking.getRatePlan().getId()
-        );
+        return mapBookingToDto(booking, payment);
     }
 
     public BookingDto getById(Long bookingId) {
@@ -348,6 +272,10 @@ public class BookingService {
                 .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
         redisCacheService.set(String.valueOf(booking.getId()), booking, Duration.ofMinutes(20));
         PaymentDto payment = paymentService.getByBookingId(bookingId);
+        return mapBookingToDto(booking, payment);
+    }
+
+    private BookingDto mapBookingToDto(Booking booking, PaymentDto payment) {
         return new BookingDto(
                 booking.getId(),
                 booking.getRoom().getId(),

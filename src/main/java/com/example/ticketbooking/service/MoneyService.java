@@ -24,4 +24,6 @@ public abstract class MoneyService {
     public abstract PaymentDto getByBookingId(Long bookingId);
 
     public abstract void setPriceByRatePlan(Payment payment, Long ratePlanId, Long nights);
+
+    public abstract PaymentDto mapPaymentToDto(Payment payment);
 }

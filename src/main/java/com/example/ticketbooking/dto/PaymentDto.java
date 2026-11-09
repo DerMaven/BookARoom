@@ -6,7 +6,7 @@ import com.example.ticketbooking.model.enums.PaymentMethod;
 import java.time.LocalDateTime;
 
 public record PaymentDto(
-        Long id,
+        Long paymentId,
         Long amount,
         Currency currency,
         LocalDateTime processedAt,
