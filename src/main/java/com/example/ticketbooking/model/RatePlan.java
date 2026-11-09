@@ -34,6 +34,8 @@ public class RatePlan {
     @PositiveOrZero
     private BigDecimal price;
 
+    @Column(name = "beds")
+    @PositiveOrZero
     private Long beds;
 
     @Column(name = "currency")

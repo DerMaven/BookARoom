@@ -5,8 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.type.CollectionType;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -24,6 +28,20 @@ public class RedisCacheService {
             return Optional.of(objectMapper.convertValue(json, targetClass));
         } catch (Exception e) {
             return Optional.empty();
+        }
+    }
+
+    public <T> List<T> getList(String cacheKey, Class<T> targetClass) {
+        String json = redisTemplate.opsForValue().get(cacheKey);
+        if (json == null) {
+            return Collections.emptyList();
+        }
+        try {
+            CollectionType collectionType = objectMapper.getTypeFactory()
+                    .constructCollectionType(List.class, targetClass);
+            return objectMapper.readValue(json, collectionType);
+        } catch (Exception e) {
+            return Collections.emptyList();
         }
     }
 
