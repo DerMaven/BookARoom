@@ -2,10 +2,8 @@ package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.exception.HotelNotFoundException;
 import com.example.ticketbooking.exception.RoomNotFoundException;
-import com.example.ticketbooking.model.DailyInventory;
 import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.model.Room;
-import com.example.ticketbooking.repository.DailyInventoryRepository;
 import com.example.ticketbooking.repository.HotelRepository;
 import com.example.ticketbooking.repository.RatePlanRepository;
 import com.example.ticketbooking.repository.RoomRepository;

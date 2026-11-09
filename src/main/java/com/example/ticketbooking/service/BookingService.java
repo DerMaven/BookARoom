@@ -1,7 +1,6 @@
 package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.dto.BookingDto;
-import com.example.ticketbooking.dto.GuestDto;
 import com.example.ticketbooking.dto.PaymentDto;
 import com.example.ticketbooking.exception.*;
 import com.example.ticketbooking.model.*;
