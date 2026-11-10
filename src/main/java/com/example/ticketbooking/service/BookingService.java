@@ -96,7 +96,7 @@ public class  BookingService {
 
             em.persist(room);
 
-            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getInventoryByHotelId(hotelId));
+            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getInventoryByHotelId(hotelId, checkIn, checkOut));
 
             em.persist(inventory);
 
@@ -176,7 +176,7 @@ public class  BookingService {
                 throw new BookingNotBelongsToGuestException("Бронь не принадлежит гостю. чтобы он мог ее отменить");
             }
 
-            DailyInventory inventory = inventoryService.getInventoryByHotelId(booking.getHotel().getId());
+            DailyInventory inventory = inventoryService.getInventoryByHotelId(booking.getHotel().getId(), booking.getCheckIn(), booking.getCheckOut());
             if ((inventory.getBookingStock() + 1 < 0)) {
                 throw new StockDecrementException("Декрементирование инвентаря невозможно");
             }
