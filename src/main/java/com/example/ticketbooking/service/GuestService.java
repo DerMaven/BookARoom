@@ -29,22 +29,12 @@ public class GuestService {
         if (guestCache.isPresent()) {
             Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
             redisCacheService.set(String.valueOf(guestId), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-                    );
+            return mapGuestToDto(guest);
         }
         Guest guest = guestRepository.findById(guestId)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
         redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return new GuestDto(
-                guest.getId(),
-                guest.getFirstName() + " " + guest.getLastName(),
-                guest.getPhoneNumber(),
-                guest.getEmail()
-        );
+        return mapGuestToDto(guest);
     }
 
     public GuestDto getByEmail(String email) {
@@ -52,22 +42,12 @@ public class GuestService {
         if (guestCache.isPresent()) {
             Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
             redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         }
         Guest guest = guestRepository.findByEmail(email)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
         redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return new GuestDto(
-                guest.getId(),
-                guest.getFirstName() + " " + guest.getLastName(),
-                guest.getPhoneNumber(),
-                guest.getEmail()
-        );
+        return mapGuestToDto(guest);
     }
 
     public GuestDto getByPhoneNumber(String phoneNumber) {
@@ -75,22 +55,12 @@ public class GuestService {
         if (guestCache.isPresent()) {
             Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
             redisCacheService.set(String.valueOf(phoneNumber), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         }
         Guest guest = guestRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
         redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return new GuestDto(
-                guest.getId(),
-                guest.getFirstName() + " " + guest.getLastName(),
-                guest.getPhoneNumber(),
-                guest.getEmail()
-        );
+        return mapGuestToDto(guest);
     }
 
     public GuestDto createGuest(String firstName, String lastName, String email, String phoneNumber, LocalDate birthDate, String passportNumber) {
@@ -101,24 +71,14 @@ public class GuestService {
         if (guestEmailCache.isPresent()) {
             Guest guest = guestEmailCache.get();
             redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         }
 
         Optional<Guest> guestPhoneCache = redisCacheService.get(String.valueOf(email), Guest.class);
         if (guestPhoneCache.isPresent()) {
             Guest guest = guestPhoneCache.get();
             redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         }
 
         Optional<Guest> guestByEmail = guestRepository.findByEmail(email);
@@ -149,12 +109,7 @@ public class GuestService {
 
             redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
 
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new GuestCreationException("Возникла ошибка при создании гостя");
@@ -178,12 +133,7 @@ public class GuestService {
             if (request.phoneNumber().isPresent()) guest.setPhoneNumber(request.phoneNumber().get());
             if (request.passportNumber().isPresent()) guest.setPassportNumber(request.passportNumber().get());
             redisCacheService.set(String.valueOf(guestId), guest, Duration.ofMinutes(5));
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         }
 
         try {
@@ -205,12 +155,7 @@ public class GuestService {
 
             redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
 
-            return new GuestDto(
-                    guest.getId(),
-                    guest.getFirstName() + " " + guest.getLastName(),
-                    guest.getPhoneNumber(),
-                    guest.getEmail()
-            );
+            return mapGuestToDto(guest);
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new GuestCreationException("Возникла ошибка при обновлении гостя");
@@ -219,8 +164,17 @@ public class GuestService {
         }
     }
 
-    public Guest mapDtoToEntity(GuestDto dto) {
+    public Guest mapDtoToGuest(GuestDto dto) {
         return guestRepository.findById(dto.guestId())
                 .orElseThrow(() -> new MappingException("Ошибка преобразования сущности"));
+    }
+
+    public GuestDto mapGuestToDto(Guest guest) {
+        return new GuestDto(
+                guest.getId(),
+                guest.getFirstName() + " " + guest.getLastName(),
+                guest.getPhoneNumber(),
+                guest.getEmail()
+        );
     }
 }

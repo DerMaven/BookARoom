@@ -19,7 +19,6 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 @RequiredArgsConstructor
-@NoArgsConstructor
 public class RatePlan {
 
     @Id

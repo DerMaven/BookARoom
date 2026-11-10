@@ -12,10 +12,10 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    @Query("select b from Booking b join b.guest g where g.firstName = :firstName and g.lastName = :lastName")
+    @Query("select b from Booking b join b.primaryGuest g where g.firstName = :firstName and g.lastName = :lastName")
     List<Booking> findByFullName(String firstName, String lastName);
 
-    @Query("select b from Booking b join b.guest g where b.checkIn = :checkIn and g.firstName = :firstName and g.lastName = :lastName order by :checkIn desc")
+    @Query("select b from Booking b join b.primaryGuest g where b.checkIn = :checkIn and g.firstName = :firstName and g.lastName = :lastName order by :checkIn desc")
     Optional<Booking> findByCheckInDateAndFullName(LocalDate checkIn, String firstName, String lastName);
 
     @Query("select b from Booking b join Hotel h on b.hotel.id = h.id join Room r on b.room.id = r.id where h.id = :hotelId and r.id = :roomId and b.checkIn = :checkIn and b.checkOut = :checkOut order by :checkOut desc, :checkIn desc")

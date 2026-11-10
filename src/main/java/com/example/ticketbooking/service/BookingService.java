@@ -23,7 +23,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class BookingService {
+public class  BookingService {
     private final BookingRepository bookingRepository;
     private final HotelService hotelService;
     private final RoomService roomService;
@@ -68,7 +68,7 @@ public class BookingService {
 
             List<Guest> guests = guestIds.stream()
                     .map(guestService::getById)
-                    .map(guestService::mapDtoToEntity)
+                    .map(guestService::mapDtoToGuest)
                             .toList();
             if (guests.size() > booking.getRoom().getMaxOccupancy()) {
                 throw new RoomMaxOccupancyException("Превышен порог заселения");

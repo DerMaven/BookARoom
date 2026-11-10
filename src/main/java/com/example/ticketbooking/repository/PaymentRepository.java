@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    @Query("select t from Payment t join Booking b on t.booking.id = b.id join Guest g on b.guest.id = g.id where g.firstName = :firstName and g.lastName = :lastName order by t.processedAt desc")
+    @Query("select t from Payment t join Booking b on t.booking.id = b.id join Guest g on b.primaryGuest.id = g.id where g.firstName = :firstName and g.lastName = :lastName order by t.processedAt desc")
     List<Payment> findByAllFullName(String firstName, String lastName);
 
     @Query("select t from Payment t join Booking b on t.booking.id = b.id join Hotel h on b.hotel.id = h.id where h.currency = t.currency and h.name = :hotelName order by t.processedAt desc")
