@@ -1,11 +1,9 @@
 package com.example.ticketbooking.service;
 
-import com.example.ticketbooking.dto.GuestDto;
 import com.example.ticketbooking.dto.HotelDto;
 import com.example.ticketbooking.dto.RatePlanDto;
-import com.example.ticketbooking.exception.GuestNotFoundException;
+import com.example.ticketbooking.dto.RoomDto;
 import com.example.ticketbooking.exception.HotelNotFoundException;
-import com.example.ticketbooking.model.Guest;
 import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.model.enums.Currency;
 import com.example.ticketbooking.repository.HotelRepository;
@@ -22,6 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class HotelService {
     private final RatePlanService ratePlanService;
+    private final RoomService roomService;
     private final HighlightService highlightService;
     private final RedisCacheService redisCacheService;
     private final HotelRepository hotelRepository;
@@ -93,6 +92,10 @@ public class HotelService {
             redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
         }
         return dtos;
+    }
+
+    public List<RoomDto> getAllHotelRooms(Long hotelId, Integer size, String sortBy, String direction) {
+        return roomService.getAllHotelRooms(hotelId, size, sortBy, direction);
     }
 
     public RatePlanDto getRatePlan(Long hotelId, Long ratePlanId) {
