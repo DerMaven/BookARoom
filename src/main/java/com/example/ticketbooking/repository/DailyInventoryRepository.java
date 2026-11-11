@@ -3,10 +3,12 @@ package com.example.ticketbooking.repository;
 import com.example.ticketbooking.model.DailyInventory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
+@Repository
 public interface DailyInventoryRepository extends JpaRepository<DailyInventory, Long> {
 
     @Query("select di from DailyInventory di where di.hotel.name = :name and di.inventoryDate >= :checkIn and di.inventoryDate < :checkOut order by di.inventoryDate asc")
