@@ -11,8 +11,11 @@ import com.example.ticketbooking.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service("refundService")
 public class RefundService extends MoneyService {
@@ -69,5 +72,15 @@ public class RefundService extends MoneyService {
                 payment.getProcessedAt(),
                 payment.getPaymentMethod()
         );
+    }
+
+    @Override
+    public Map<Long, PaymentDto> getPaymentsByBookingIds(List<Long> bookingIds) {
+        return paymentRepository.findAllByBookingIdIn(bookingIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        payment -> payment.getBooking().getId(),
+                        this::mapPaymentToDto
+                ));
     }
 }

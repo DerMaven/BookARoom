@@ -7,6 +7,9 @@ import com.example.ticketbooking.repository.PaymentRepository;
 import com.example.ticketbooking.repository.RatePlanRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+
 @Service
 public abstract class MoneyService {
     private final RatePlanRepository ratePlanRepository;
@@ -26,4 +29,6 @@ public abstract class MoneyService {
     public abstract void setPriceByRatePlan(Payment payment, Long ratePlanId, Long nights);
 
     public abstract PaymentDto mapPaymentToDto(Payment payment);
+
+    public abstract Map<Long, PaymentDto> getPaymentsByBookingIds(List<Long> bookingIds);
 }

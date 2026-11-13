@@ -1,25 +1,26 @@
 package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.dto.BookingDto;
+import com.example.ticketbooking.dto.HotelDto;
 import com.example.ticketbooking.dto.PaymentDto;
 import com.example.ticketbooking.exception.*;
 import com.example.ticketbooking.model.*;
 import com.example.ticketbooking.model.enums.*;
+import com.example.ticketbooking.model.enums.Currency;
 import com.example.ticketbooking.repository.BookingRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -38,11 +39,13 @@ public class  BookingService {
     private final InventoryService inventoryService;
     private final GuestService guestService;
 
+    private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "isAvailable", "checkIn", "checkOut", "totalAmount"));
+
     public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long primaryGuestId, List<Long> guestIds, PaymentMethod paymentMethod, LocalDate checkIn, LocalDate checkOut) {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("createBooking");
         EntityManager em = emf.createEntityManager();
 
-        Optional<Booking> foundByDate = bookingRepository.findByHotelIdAndRoomIdAndCheckInAndCheckOut(hotelId, roomId, checkIn, checkOut);
+        Optional<Booking> foundByDate = bookingRepository.findByHotelId(hotelId, checkIn, checkOut);
         if (foundByDate.isPresent()) {
             throw new BookingAlreadyExistsException("Бронь на эти даты, в этом отеле, на этот номер, уже существует");
         }
@@ -145,7 +148,7 @@ public class  BookingService {
             em.flush();
             em.getTransaction().commit();
 
-            redisCacheService.set("booking", String.valueOf(booking.getId()), Duration.ofMinutes(30));
+            redisCacheService.set("booking:" + booking.getId(), String.valueOf(booking.getId()), Duration.ofMinutes(2));
             return mapBookingToDto(booking, paymentService.mapPaymentToDto(payment));
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
@@ -165,8 +168,6 @@ public class  BookingService {
             em.getTransaction().begin();
 
             Booking booking = em.find(Booking.class, bookingId);
-            Long nights = booking.getNights().longValue();
-            Currency bookingCurrency = booking.getHotel().getCurrency();
             Guest guest = em.find(Guest.class, guestId);
 
             if (!(booking.getStatus() == BookingStatus.CONFIRMED)) {
@@ -213,23 +214,46 @@ public class  BookingService {
             throw new BookingCancellationException("Возникла ошибка при отмене брони");
         } finally {
             em.close();
-            redisCacheService.set("booking", String.valueOf(bookingId), Duration.ofMinutes(10));
+            redisCacheService.set("bookings:" + bookingId, String.valueOf(bookingId), Duration.ofMinutes(10));
         }
     }
 
-    public BookingDto getByReference(String reference) {
-        Optional<Booking> bookingCache = redisCacheService.get(String.valueOf(reference), Booking.class);
-        if (bookingCache.isPresent()) {
-            Booking booking = bookingCache.orElseThrow(() -> new BookingNotFoundException("Бронь не была найдена в кэше"));
-            redisCacheService.set(String.valueOf(reference), booking, Duration.ofMinutes(5));
-            PaymentDto payment = paymentService.getByBookingId(booking.getId());
-            return mapBookingToDto(booking, payment);
+    public List<BookingDto> getAllByHotelId(Long hotelId,
+                                            LocalDateTime startTime, LocalDateTime endTime,
+                                            Integer size, String sortBy, String direction) {
+        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
+        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "isAvailable";
+        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+
+        String cacheKey = "bookings:" + hotelId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+
+        List<BookingDto> cachedBookings = redisCacheService.getList(cacheKey, BookingDto.class);
+        if (!cachedBookings.isEmpty()) {
+            return cachedBookings;
         }
-        Booking booking = bookingRepository.findByReference(reference)
-                .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
-        redisCacheService.set(String.valueOf(booking.getId()), booking, Duration.ofMinutes(20));
-        PaymentDto payment = paymentService.getByBookingId(booking.getId());
-        return mapBookingToDto(booking, payment);
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Booking> bookings = bookingRepository.findAllByHotelId(hotelId,
+                startTime, endTime,
+                Limit.of(limitSize), sort);
+
+        if (bookings.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> bookingIds = bookings.stream().map(Booking::getId).toList();
+
+        Map<Long, PaymentDto> paymentsMap = paymentService.getPaymentsByBookingIds(bookingIds);
+
+        List<BookingDto> dtos = bookings
+                .stream()
+                .map(booking -> mapBookingToDto(booking, paymentsMap.get(booking.getId())))
+                .toList();
+
+        if (!dtos.isEmpty()) {
+            redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
+        }
+        return dtos;
     }
 
     public BookingDto getByGuestId(Long guestId) {
@@ -253,19 +277,7 @@ public class  BookingService {
             Booking booking = bookingCache.orElseThrow(() -> new BookingNotFoundException("Бронь не была найдена в кэше"));
             redisCacheService.set(String.valueOf(bookingId), booking, Duration.ofMinutes(5));
             PaymentDto payment = paymentService.getByBookingId(bookingId);
-            return new BookingDto(
-                    booking.getId(),
-                    booking.getRoom().getId(),
-                    booking.getRoom().getRoomType(),
-                    booking.getCheckIn(),
-                    booking.getCheckOut(),
-                    booking.getNights().longValue(),
-                    booking.getRatePlan().getPrice().longValue(),
-                    payment.amount(),
-                    payment.currency(),
-                    true,
-                    booking.getRatePlan().getId()
-            );
+            return mapBookingToDto(booking, payment);
         }
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
@@ -288,6 +300,12 @@ public class  BookingService {
                 true,
                 booking.getRatePlan().getId()
         );
+    }
+
+    private Sort createSort(String sortBy, String direction) {
+        String field = (sortBy != null && !sortBy.isBlank()) ? sortBy : "id";
+        Sort.Direction dirr = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return Sort.by(dirr, field);
     }
 
     private int getNights(LocalDate checkIn, LocalDate checkOut) {

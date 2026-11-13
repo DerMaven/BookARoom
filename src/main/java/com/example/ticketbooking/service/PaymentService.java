@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service("paymentService")
 public class PaymentService extends MoneyService {
@@ -156,6 +157,15 @@ public class PaymentService extends MoneyService {
         String field = (sortBy != null && !sortBy.isBlank()) ? sortBy : "id";
         Sort.Direction dirr = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
         return Sort.by(dirr, field);
+    }
+
+    public Map<Long, PaymentDto> getPaymentsByBookingIds(List<Long> bookingIds) {
+        return paymentRepository.findAllByBookingIdIn(bookingIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        payment -> payment.getBooking().getId(),
+                        this::mapPaymentToDto
+                ));
     }
 
     public PaymentDto mapPaymentToDto(Payment payment) {

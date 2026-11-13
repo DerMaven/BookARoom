@@ -41,4 +41,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                                             Long rangeFrom, Long rangeTo,
                                             LocalDateTime startTime, LocalDateTime endTime,
                                             Limit limit, Sort sort);
+
+    @Query("select p from Payment p where p.booking.id in :bookingIds")
+    List<Payment> findAllByBookingIdIn(List<Long> bookingIds);
 }
