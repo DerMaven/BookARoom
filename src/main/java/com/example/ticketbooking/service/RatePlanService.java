@@ -5,6 +5,8 @@ import com.example.ticketbooking.exception.RatePlanNotFoundException;
 import com.example.ticketbooking.model.RatePlan;
 import com.example.ticketbooking.repository.RatePlanRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -30,14 +32,23 @@ public class RatePlanService {
         return mapPlanToDto(plan);
     }
 
-    public List<RatePlanDto> getByAllHotelId(Long hotelId, Long size) {
+    public List<RatePlanDto> getByAllHotelId(Long hotelId,
+                                             Integer size, String sortBy, String direction) {
+        int limitSize = (size != null && size > 0) ? size : 10;
+        String sortField = (sortBy != null) ? sortBy : "id";
+        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+
+
         List<RatePlan> plansCache = redisCacheService.getList(String.valueOf(hotelId), RatePlan.class);
         if (plansCache != null) {
             List<RatePlanDto> dtos = this.mapPlansToDtos(plansCache);
             redisCacheService.set(String.valueOf(hotelId), dtos, Duration.ofMinutes(10));
             return dtos;
         }
-        List<RatePlan> plans = ratePlanRepository.findAllByHotelId(hotelId, size);
+
+        Sort sort = createSort(sortField, sortDir);
+
+        List<RatePlan> plans = ratePlanRepository.findAllByHotelId(hotelId, Limit.of(limitSize), sort);
         if (plans == null) {
             throw new RatePlanNotFoundException("Ни один из тарифов не был найден у отеля");
         }
@@ -61,5 +72,11 @@ public class RatePlanService {
         return plans.stream()
                 .map(this::mapPlanToDto)
                 .toList();
+    }
+
+    private Sort createSort(String sortBy, String direction) {
+        String field = (sortBy != null && !sortBy.isBlank()) ? sortBy : "id";
+        Sort.Direction dirr = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return Sort.by(dirr, field);
     }
 }

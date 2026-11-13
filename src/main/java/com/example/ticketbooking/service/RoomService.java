@@ -25,7 +25,8 @@ public class RoomService {
     private final RatePlanRepository ratePlanRepository;
     private final RedisCacheService redisCacheService;
 
-    public List<RoomDto> getAllHotelRooms(Long hotelId, Integer size, String sortBy, String direction) {
+    public List<RoomDto> getAllHotelRooms(Long hotelId,
+                                          Integer size, String sortBy, String direction) {
         int limitSize = (size != null && size > 0) ? size : 10;
         String sortField = (sortBy != null) ? sortBy : "id";
         String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
@@ -49,7 +50,7 @@ public class RoomService {
         )).toList();
 
         if (!dtos.isEmpty()) {
-            redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
+            redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(55));
         }
         return dtos;
     }
