@@ -1,16 +1,25 @@
 package com.example.ticketbooking.service;
 
+import com.example.ticketbooking.dto.HotelDto;
 import com.example.ticketbooking.dto.PaymentDto;
+import com.example.ticketbooking.dto.RatePlanDto;
 import com.example.ticketbooking.exception.PaymentNotFoundException;
 import com.example.ticketbooking.exception.RatePlanNotFoundException;
+import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.model.Payment;
 import com.example.ticketbooking.model.RatePlan;
 import com.example.ticketbooking.model.enums.Currency;
 import com.example.ticketbooking.repository.RatePlanRepository;
 import com.example.ticketbooking.repository.PaymentRepository;
+import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -39,18 +48,56 @@ public class PaymentService extends MoneyService {
         return Objects.equals(hotelCurrency, ratePlanCurrency);
     }
 
-    @Override
-    public PaymentDto getByBookingId(Long bookingId) {
-        Optional<Payment> paymentCache = redisCacheService.get(String.valueOf(bookingId), Payment.class);
+    public PaymentDto getByHotelId(Long hotelId, Long paymentId) {
+        String cacheKey = "hotels:" + hotelId + ":" + paymentId;
+        Optional<PaymentDto> paymentCache = redisCacheService.get(cacheKey, PaymentDto.class);
         if (paymentCache.isPresent()) {
-            Payment payment = paymentCache.orElseThrow(() -> new PaymentNotFoundException("Оплата не была найден в кэше"));
-            redisCacheService.set(String.valueOf(bookingId), payment, Duration.ofMinutes(5));
-            return mapPaymentToDto(payment);
+            return paymentCache.get();
         }
+        Payment payment = paymentRepository.findByHotelId(hotelId, paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException("Платеж не был найден в базе данных"));
+
+        PaymentDto dto = mapPaymentToDto(payment);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
+    }
+
+    public List<PaymentDto> getAllByHotelId(Long hotelId, LocalDateTime startTime, LocalDateTime endTime, Integer size, String sortBy, String direction) {
+        int limitSize = (size != null && size > 0) ? size : 10;
+        String sortField = (sortBy != null) ? sortBy : "id";
+        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+
+        String cacheKey = "hotels:" + hotelId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+        List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
+        if (paymentCache != null) {
+            return paymentCache;
+        }
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Payment> payments = paymentRepository.findAllByHotelId(hotelId, startTime, endTime, limitSize, sort);
+        if (payments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<PaymentDto> dtos = mapPaymentsToDtos(payments);
+        redisCacheService.set(cacheKey, payments, Duration.ofMinutes(10));
+        return dtos;
+    }
+
+    public PaymentDto getByBookingId(Long bookingId) {
+        String cacheKey = "bookings:" + bookingId;
+        Optional<PaymentDto> paymentCache = redisCacheService.get(cacheKey, PaymentDto.class);
+
+        if (paymentCache.isPresent()) {
+            return paymentCache.get();
+        }
+
         Payment payment = paymentRepository.findByBookingId(bookingId)
-                .orElseThrow(() -> new PaymentNotFoundException("Оплата не была найдена в базе данных"));
-        redisCacheService.set(String.valueOf(payment.getBooking().getId()), payment, Duration.ofMinutes(15));
-        return mapPaymentToDto(payment);
+                .orElseThrow(() -> new PaymentNotFoundException("Платеж не был найден в базе данных"));
+
+        PaymentDto dto = mapPaymentToDto(payment);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     @Override
@@ -61,6 +108,12 @@ public class PaymentService extends MoneyService {
         payment.setAmount(amount);
     }
 
+    private Sort createSort(String sortBy, String direction) {
+        String field = (sortBy != null && !sortBy.isBlank()) ? sortBy : "id";
+        Sort.Direction dirr = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return Sort.by(dirr, field);
+    }
+
     public PaymentDto mapPaymentToDto(Payment payment) {
         return new PaymentDto(
                 payment.getId(),
@@ -69,5 +122,9 @@ public class PaymentService extends MoneyService {
                 payment.getProcessedAt(),
                 payment.getPaymentMethod()
         );
+    }
+
+    private List<PaymentDto> mapPaymentsToDtos(List<Payment> payments) {
+        return payments.stream().map(this::mapPaymentToDto).toList();
     }
 }
