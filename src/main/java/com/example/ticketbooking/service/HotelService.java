@@ -27,18 +27,19 @@ public class HotelService {
 
     public HotelDto getById(Long hotelId) {
         Optional<Hotel> hotelCache = redisCacheService.get(String.valueOf(hotelId), Hotel.class);
+        String cacheKey = "hotels:" + hotelId;
         if (hotelCache.isPresent()) {
             Hotel hotel = hotelCache.orElseThrow(() -> new HotelNotFoundException("Отель не был найден в кэше"));
-            List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotelId, 10L);
+            List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotelId, 10, "city", "asc");
             List<Long> highlightsIds = highlightService.getIdsByAllHotelId(hotelId);
-            redisCacheService.set(String.valueOf(hotelId), hotel, Duration.ofMinutes(10));
+            redisCacheService.set(cacheKey, hotel, Duration.ofMinutes(10));
             return mapHotelToDto(hotel, ratePlanDtos, highlightsIds);
         }
         Hotel hotel = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new HotelNotFoundException("Отель не был найден в базе данных"));
-        List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotel.getId(), 10L);
+        List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotel.getId(), 10, "city", "asc");
         List<Long> highlightsIds = highlightService.getIdsByAllHotelId(hotel.getId());
-        redisCacheService.set(String.valueOf(hotel.getId()), hotel, Duration.ofMinutes(10));
+        redisCacheService.set(cacheKey, hotel, Duration.ofMinutes(10));
         return mapHotelToDto(hotel, ratePlanDtos, highlightsIds);
     }
 
@@ -59,7 +60,7 @@ public class HotelService {
 
         List<HotelDto> dtos = hotels.stream().map(hotel -> mapHotelToDto(
                         hotel,
-                        ratePlanService.getByAllHotelId(hotel.getId(), 10L),
+                        ratePlanService.getByAllHotelId(hotel.getId(), 10, "city", "asc"),
                         highlightService.getIdsByAllHotelId(hotel.getId()))).toList();
 
         if (!dtos.isEmpty()) {
@@ -85,7 +86,7 @@ public class HotelService {
 
         List<HotelDto> dtos = hotels.stream().map(hotel -> mapHotelToDto(
                         hotel,
-                        ratePlanService.getByAllHotelId(hotel.getId(), 10L),
+                        ratePlanService.getByAllHotelId(hotel.getId(), 10, "city", "asc"),
                         highlightService.getIdsByAllHotelId(hotel.getId())
                 )).toList();
         if (!dtos.isEmpty()) {
