@@ -3,6 +3,8 @@ package com.example.ticketbooking.service;
 import com.example.ticketbooking.dto.HotelDto;
 import com.example.ticketbooking.dto.PaymentDto;
 import com.example.ticketbooking.dto.RatePlanDto;
+import com.example.ticketbooking.exception.InvalidHotelIdException;
+import com.example.ticketbooking.exception.InvalidRevenueException;
 import com.example.ticketbooking.exception.PaymentNotFoundException;
 import com.example.ticketbooking.exception.RatePlanNotFoundException;
 import com.example.ticketbooking.model.Hotel;
@@ -15,19 +17,18 @@ import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Service("paymentService")
 public class PaymentService extends MoneyService {
     private final RatePlanRepository ratePlanRepository;
     private final RedisCacheService redisCacheService;
     private final PaymentRepository paymentRepository;
+    private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "amount", "currency", "processedAt"));
 
 
     public PaymentService(RatePlanRepository ratePlanRepository, RedisCacheService redisCacheService, PaymentRepository paymentRepository) {
@@ -62,25 +63,33 @@ public class PaymentService extends MoneyService {
         return dto;
     }
 
-    public List<PaymentDto> getAllByHotelId(Long hotelId, LocalDateTime startTime, LocalDateTime endTime, Integer size, String sortBy, String direction) {
-        int limitSize = (size != null && size > 0) ? size : 10;
-        String sortField = (sortBy != null) ? sortBy : "id";
-        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+    public List<PaymentDto> getAllByHotelId(Long hotelId,
+                                            LocalDateTime startTime, LocalDateTime endTime,
+                                            Integer size, String sortBy, String direction) {
+        if (hotelId == null || hotelId <= 0) throw new InvalidHotelIdException("Указан неверный ID отеля");
+        if (startTime == null || endTime == null || startTime.isAfter(endTime))
+            throw new DateTimeException("Начало временного отрезка не может быть позже конца");
+
+        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
+        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "id";
+        String sortDir = (direction != null) ? "desc" : "asc";
 
         String cacheKey = "hotels:" + hotelId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
         List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
-        if (paymentCache != null) {
+        if (!paymentCache.isEmpty()) {
             return paymentCache;
         }
 
         Sort sort = createSort(sortField, sortDir);
-        List<Payment> payments = paymentRepository.findAllByHotelId(hotelId, startTime, endTime, limitSize, sort);
+        List<Payment> payments = paymentRepository.findAllByHotelId(hotelId,
+                startTime, endTime,
+                Limit.of(limitSize), sort);
         if (payments.isEmpty()) {
             return new ArrayList<>();
         }
 
         List<PaymentDto> dtos = mapPaymentsToDtos(payments);
-        redisCacheService.set(cacheKey, payments, Duration.ofMinutes(10));
+        redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(50));
         return dtos;
     }
 
@@ -98,6 +107,41 @@ public class PaymentService extends MoneyService {
         PaymentDto dto = mapPaymentToDto(payment);
         redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
         return dto;
+    }
+
+    public List<PaymentDto> getRevenueRangeByHotelId(Long hotelId,
+                                                     Long rangeFrom, Long rangeTo,
+                                                     LocalDateTime startTime, LocalDateTime endTime,
+                                                     Integer size, String sortBy, String direction) {
+        if (hotelId == null || hotelId <= 0) throw new InvalidHotelIdException("Указан неверный ID отеля");
+        if (rangeFrom == null || rangeTo == null || rangeFrom > rangeTo)
+            throw new InvalidRevenueException("Начало диапазона не может быть больше конца");
+        if (startTime == null || endTime == null || startTime.isAfter(endTime))
+            throw new DateTimeException("Начало временного отрезка не может быть позже конца");
+
+        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
+        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "id";
+        String sortDir = (direction != null) ? "desc" : "asc";
+
+        String cacheKey = "hotels:" + hotelId + ":" + rangeFrom + ":" + rangeTo + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+        List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
+        if (!paymentCache.isEmpty()) {
+            return paymentCache;
+        }
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Payment> payments = paymentRepository.findRevenueRangeByHotelId(hotelId,
+                        rangeFrom, rangeTo,
+                        startTime, endTime,
+                        Limit.of(limitSize), sort
+        );
+        if (payments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<PaymentDto> dtos = mapPaymentsToDtos(payments);
+        redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(30));
+        return dtos;
     }
 
     @Override
