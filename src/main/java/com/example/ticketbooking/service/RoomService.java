@@ -1,6 +1,7 @@
 package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.dto.RoomDto;
+import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.exception.HotelNotFoundException;
 import com.example.ticketbooking.exception.RoomNotFoundException;
 import com.example.ticketbooking.model.Hotel;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,12 +26,13 @@ public class RoomService {
     private final HotelRepository hotelRepository;
     private final RatePlanRepository ratePlanRepository;
     private final RedisCacheService redisCacheService;
+    private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "roomType", "status", "price"));
 
     public List<RoomDto> getAllHotelRooms(Long hotelId,
-                                          Integer size, String sortBy, String direction) {
-        int limitSize = (size != null && size > 0) ? size : 10;
-        String sortField = (sortBy != null) ? sortBy : "id";
-        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+                                          SortParams params) {
+        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
+        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
+        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
 
         String cacheKey = "rooms:hotel:" + hotelId + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
 
@@ -45,8 +48,41 @@ public class RoomService {
                 room.getId(),
                 room.getRoomNumber(),
                 room.getFloor(),
-                String.valueOf(room.getRoomType()),
-                String.valueOf(room.getStatus())
+                room.getRoomType(),
+                room.getStatus()
+        )).toList();
+
+        if (!dtos.isEmpty()) {
+            redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(55));
+        }
+        return dtos;
+    }
+
+    public List<RoomDto> getAllAvailableHotelRooms(Long hotelId,
+                                          SortParams params) {
+        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
+        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
+        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
+
+        String cacheKey = "rooms:hotel:" + hotelId + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+
+        List<RoomDto> cachedRooms = redisCacheService.getList(cacheKey, RoomDto.class);
+        if (!cachedRooms.isEmpty()) {
+            return cachedRooms;
+        }
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Room> rooms = roomRepository.findAllByHotelId(hotelId, Limit.of(limitSize), sort)
+                .stream()
+                .filter(r -> r.getIsAvailable() == true)
+                .toList();
+
+        List<RoomDto> dtos = rooms.stream().map(room -> new RoomDto(
+                room.getId(),
+                room.getRoomNumber(),
+                room.getFloor(),
+                room.getRoomType(),
+                room.getStatus()
         )).toList();
 
         if (!dtos.isEmpty()) {

@@ -8,8 +8,11 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,23 +21,19 @@ public class InventoryService {
     private final RedisCacheService redisCacheService;
 
     @Transactional
-    public DailyInventoryDto getAvailability(Long hotelId, LocalDate checkIn, LocalDate checkOut) {
-        String cacheKey = "inventory:" + hotelId + ":" + checkIn + ":" + checkOut;
+    public DailyInventory getTodayAvailability(Long hotelId, LocalDate date) {
+        String cacheKey = "inventory:" + hotelId + ":" + date;
 
-        DailyInventory inventoryCache = redisCacheService.get(cacheKey, DailyInventory.class).get();
-        if (inventoryCache != null) {
-            return mapInventoryToDto(inventoryCache);
+        Optional<DailyInventory> inventoryCache = redisCacheService.get(cacheKey, DailyInventory.class);
+        if (inventoryCache.isPresent()) {
+            return inventoryCache.get();
         }
 
-        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, checkIn, checkOut)
+        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, date)
                 .orElseThrow(() -> new InventoryNotFoundException("Инвентарь не был найден"));
 
-        return mapInventoryToDto(inventory);
-    }
-
-    public DailyInventory getInventoryByHotelId(Long hotelId, LocalDate checkIn, LocalDate checkOut) {
-        return inventoryRepository.findByHotelId(hotelId, checkIn, checkOut)
-                .orElseThrow(() -> new InventoryNotFoundException("Инвентарь не был найден"));
+        redisCacheService.set(cacheKey, inventory, Duration.ofMinutes(2));
+        return inventory;
     }
 
     private DailyInventoryDto mapInventoryToDto(DailyInventory inventory) {
