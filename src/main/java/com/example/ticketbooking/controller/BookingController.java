@@ -26,7 +26,8 @@ public class BookingController {
                              @RequestBody BookingCreateParams params,
                              HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
-        return bookingService.createBooking(hotelId,
+        return bookingService.createBooking(
+                hotelId,
                 params.roomId,
                 params.ratePlanId,
                 params.primaryGuestId,
@@ -42,27 +43,34 @@ public class BookingController {
                              @RequestParam Long guestId,
                              HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
-        return bookingService.cancelBooking(bookingId, guestId);
+        return bookingService.cancelBooking(
+                bookingId,
+                guestId
+        );
     }
 
-    @GetMapping("/all/{guestId}")
+    @GetMapping("/all-guest/{guestId}")
     public List<BookingDto> getAllByGuestId(@PathVariable Long guestId,
                                             @RequestBody BookingGetAllParams params,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
-        return bookingService.getAllByGuestId(guestId,
+        return bookingService.getAllByGuestId(
+                guestId,
                 params.startTime, params.endTime,
-                params.size, params.sortBy, params.direction);
+                params.size, params.sortBy, params.direction
+        );
     }
 
-    @GetMapping("/all/{hotelId}")
+    @GetMapping("/all-hotel/{hotelId}")
     public List<BookingDto> getAllByHotelId(@PathVariable Long hotelId,
                                             @RequestBody BookingGetAllParams params,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
-        return bookingService.getAllByHotelId(hotelId,
+        return bookingService.getAllByHotelId(
+                hotelId,
                 params.startTime, params.endTime,
-                params.size, params.sortBy, params.direction);
+                params.size, params.sortBy, params.direction
+        );
     }
 
     @GetMapping("/{guestId}")
@@ -82,7 +90,7 @@ public class BookingController {
 
     @Getter
     @Setter
-    public class BookingCreateParams{
+    public static class BookingCreateParams{
         private Long roomId;
         private Long ratePlanId;
         private Long primaryGuestId;
@@ -94,7 +102,7 @@ public class BookingController {
 
     @Getter
     @Setter
-    public class BookingGetAllParams{
+    public static class BookingGetAllParams{
         private Long id;
         private LocalDateTime startTime;
         private LocalDateTime endTime;
