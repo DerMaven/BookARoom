@@ -1,7 +1,6 @@
 package com.example.ticketbooking.repository;
 
 import com.example.ticketbooking.model.Booking;
-import com.example.ticketbooking.model.Guest;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
