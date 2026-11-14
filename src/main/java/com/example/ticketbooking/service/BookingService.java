@@ -256,19 +256,54 @@ public class  BookingService {
         return dtos;
     }
 
-    public BookingDto getByGuestId(Long guestId) {
-        Optional<Booking> bookingCache = redisCacheService.get(String.valueOf(guestId), Booking.class);
+    public BookingDto getByGuestId(Long guestId, Long bookingId) {
+        Optional<BookingDto> bookingCache = redisCacheService.get("booking:" + bookingId + ":" + guestId, BookingDto.class);
         if (bookingCache.isPresent()) {
-            Booking booking = bookingCache.orElseThrow(() -> new BookingNotFoundException("Бронь не была найдена в кэше"));
-            redisCacheService.set(String.valueOf(guestId), booking, Duration.ofMinutes(5));
-            PaymentDto payment = paymentService.getByBookingId(guestId);
-            return mapBookingToDto(booking, payment);
+            return bookingCache.get();
         }
-        Booking booking = bookingRepository.findById(guestId)
+
+        Booking booking = bookingRepository.findByGuestId(guestId, bookingId)
                 .orElseThrow(() -> new GuestNotFoundException("Бронь не была найдена в базе данных"));
-        redisCacheService.set(String.valueOf(booking.getId()), booking, Duration.ofMinutes(20));
+        redisCacheService.set("booking:" + bookingId + ":" + guestId, booking, Duration.ofMinutes(20));
+
         PaymentDto payment = paymentService.getByBookingId(booking.getId());
         return mapBookingToDto(booking, payment);
+    }
+
+    public List<BookingDto> getAllByGuestId(Long guestId, LocalDateTime startTime, LocalDateTime endTime, Integer size, String sortBy, String direction) {
+        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
+        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "isAvailable";
+        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+
+        String cacheKey = "bookings:guest:" + guestId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+
+        List<BookingDto> cachedBookings = redisCacheService.getList(cacheKey, BookingDto.class);
+        if (!cachedBookings.isEmpty()) {
+            return cachedBookings;
+        }
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Booking> bookings = bookingRepository.findAllByGuestId(guestId,
+                startTime, endTime,
+                Limit.of(limitSize), sort);
+
+        if (bookings.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> bookingIds = bookings.stream().map(Booking::getId).toList();
+
+        Map<Long, PaymentDto> paymentsMap = paymentService.getPaymentsByBookingIds(bookingIds);
+
+        List<BookingDto> dtos = bookings
+                .stream()
+                .map(booking -> mapBookingToDto(booking, paymentsMap.get(booking.getId())))
+                .toList();
+
+        if (!dtos.isEmpty()) {
+            redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(3));
+        }
+        return dtos;
     }
 
     public BookingDto getById(Long bookingId) {

@@ -17,10 +17,17 @@ import java.util.Optional;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("select b from Booking b" +
-            " join b.primaryGuest g" +
-            " where g.firstName = :firstName" +
-            " and g.lastName = :lastName")
-    List<Booking> findByFullName(String firstName, String lastName);
+            " join Guest g on g.id = b.primaryGuest.id" +
+            " where g.id = :guestId and b.id = :bookingId")
+    Optional<Booking> findByGuestId(Long guestId, Long bookingId);
+
+    @Query("select b from Booking b" +
+            " join Guest g on g.id = b.primaryGuest.id" +
+            " where g.id = :guestId" +
+            " and b.checkIn >= :from and b.checkOut <= :to" +
+            " order by :sort" +
+            " limit :limit")
+    List<Booking> findAllByGuestId(Long guestId, LocalDateTime from, LocalDateTime to, Limit limit, Sort sort);
 
     @Query("select b from Booking b" +
             " join Hotel h on b.hotel.id = h.id" +
