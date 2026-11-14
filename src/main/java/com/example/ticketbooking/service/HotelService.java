@@ -108,6 +108,10 @@ public class HotelService {
         return roomService.getAllHotelRooms(hotelId, params);
     }
 
+    public List<RatePlanDto> getRatePlans(Long hotelId, SortParams params) {
+        return ratePlanService.getByAllHotelId(hotelId, params);
+    }
+
     public RatePlanDto getRatePlan(Long hotelId, Long ratePlanId) {
         return ratePlanService.getByHotelId(hotelId, ratePlanId);
     }
