@@ -1,6 +1,7 @@
 package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.dto.RatePlanDto;
+import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.exception.RatePlanNotFoundException;
 import com.example.ticketbooking.model.RatePlan;
 import com.example.ticketbooking.repository.RatePlanRepository;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,6 +20,7 @@ import java.util.Optional;
 public class RatePlanService {
     private final RatePlanRepository ratePlanRepository;
     private final RedisCacheService redisCacheService;
+    private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "price", "beds"));
 
     public RatePlanDto getByHotelId(Long hotelId, Long ratePlanId) {
         String cacheKey = "hotel:" + hotelId + ":rate-plan:" + ratePlanId;
@@ -35,10 +38,10 @@ public class RatePlanService {
     }
 
     public List<RatePlanDto> getByAllHotelId(Long hotelId,
-                                             Integer size, String sortBy, String direction) {
-        int limitSize = (size != null && size > 0) ? size : 10;
-        String sortField = (sortBy != null) ? sortBy : "id";
-        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+                                             SortParams params) {
+        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
+        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
+        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
 
 
         List<RatePlan> plansCache = redisCacheService.getList(String.valueOf(hotelId), RatePlan.class);

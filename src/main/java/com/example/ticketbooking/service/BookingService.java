@@ -1,8 +1,6 @@
 package com.example.ticketbooking.service;
 
-import com.example.ticketbooking.dto.BookingDto;
-import com.example.ticketbooking.dto.HotelDto;
-import com.example.ticketbooking.dto.PaymentDto;
+import com.example.ticketbooking.dto.*;
 import com.example.ticketbooking.exception.*;
 import com.example.ticketbooking.model.*;
 import com.example.ticketbooking.model.enums.*;
@@ -99,7 +97,7 @@ public class  BookingService {
 
             em.persist(room);
 
-            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getInventoryByHotelId(hotelId, checkIn, checkOut));
+            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getTodayAvailability(hotelId, checkIn));
 
             em.persist(inventory);
 
@@ -177,7 +175,7 @@ public class  BookingService {
                 throw new BookingNotBelongsToGuestException("Бронь не принадлежит гостю. чтобы он мог ее отменить");
             }
 
-            DailyInventory inventory = inventoryService.getInventoryByHotelId(booking.getHotel().getId(), booking.getCheckIn(), booking.getCheckOut());
+            DailyInventory inventory = inventoryService.getTodayAvailability(booking.getHotel().getId(), booking.getCheckIn());
             if ((inventory.getBookingStock() + 1 < 0)) {
                 throw new StockDecrementException("Декрементирование инвентаря невозможно");
             }
@@ -220,10 +218,10 @@ public class  BookingService {
 
     public List<BookingDto> getAllByHotelId(Long hotelId,
                                             LocalDateTime startTime, LocalDateTime endTime,
-                                            Integer size, String sortBy, String direction) {
-        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
-        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "isAvailable";
-        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+                                            SortParams params) {
+        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
+        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
+        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
 
         String cacheKey = "bookings:" + hotelId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
 
@@ -272,10 +270,10 @@ public class  BookingService {
 
     public List<BookingDto> getAllByGuestId(Long guestId,
                                             LocalDateTime startTime, LocalDateTime endTime,
-                                            Integer size, String sortBy, String direction) {
-        int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
-        String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "isAvailable";
-        String sortDir = (direction != null) ? direction.toLowerCase() : "asc";
+                                            SortParams params) {
+        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
+        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
+        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
 
         String cacheKey = "bookings:guest:" + guestId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
 
