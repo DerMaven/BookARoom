@@ -1,6 +1,7 @@
 package com.example.ticketbooking.controller;
 
 import com.example.ticketbooking.dto.BookingDto;
+import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.model.enums.PaymentMethod;
 import com.example.ticketbooking.service.BookingService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -57,7 +58,7 @@ public class BookingController {
         return bookingService.getAllByGuestId(
                 guestId,
                 params.startTime, params.endTime,
-                params.size, params.sortBy, params.direction
+                new SortParams(params.size, params.sortBy, params.direction)
         );
     }
 
@@ -69,7 +70,7 @@ public class BookingController {
         return bookingService.getAllByHotelId(
                 hotelId,
                 params.startTime, params.endTime,
-                params.size, params.sortBy, params.direction
+                new SortParams(params.size, params.sortBy, params.direction)
         );
     }
 
