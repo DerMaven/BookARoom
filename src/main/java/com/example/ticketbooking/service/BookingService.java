@@ -256,7 +256,7 @@ public class  BookingService {
         return dtos;
     }
 
-    public BookingDto getByGuestId(Long guestId, Long bookingId) {
+    public BookingDto getByGuestId(Long bookingId, Long guestId) {
         Optional<BookingDto> bookingCache = redisCacheService.get("booking:" + bookingId + ":" + guestId, BookingDto.class);
         if (bookingCache.isPresent()) {
             return bookingCache.get();
@@ -270,7 +270,9 @@ public class  BookingService {
         return mapBookingToDto(booking, payment);
     }
 
-    public List<BookingDto> getAllByGuestId(Long guestId, LocalDateTime startTime, LocalDateTime endTime, Integer size, String sortBy, String direction) {
+    public List<BookingDto> getAllByGuestId(Long guestId,
+                                            LocalDateTime startTime, LocalDateTime endTime,
+                                            Integer size, String sortBy, String direction) {
         int limitSize = (size != null && size > 0) ? Math.min(100, size) : 10;
         String sortField = (sortBy != null && ALLOWED_SORT_FIELDS.contains(sortBy)) ? sortBy : "isAvailable";
         String sortDir = (direction != null) ? direction.toLowerCase() : "asc";

@@ -50,6 +50,7 @@ public class PaymentService extends MoneyService {
         return Objects.equals(hotelCurrency, ratePlanCurrency);
     }
 
+    @Override
     public PaymentDto getByHotelId(Long hotelId, Long paymentId) {
         String cacheKey = "hotels:" + hotelId + ":" + paymentId;
         Optional<PaymentDto> paymentCache = redisCacheService.get(cacheKey, PaymentDto.class);
@@ -64,6 +65,7 @@ public class PaymentService extends MoneyService {
         return dto;
     }
 
+    @Override
     public List<PaymentDto> getAllByHotelId(Long hotelId,
                                             LocalDateTime startTime, LocalDateTime endTime,
                                             Integer size, String sortBy, String direction) {
@@ -94,6 +96,7 @@ public class PaymentService extends MoneyService {
         return dtos;
     }
 
+    @Override
     public PaymentDto getByBookingId(Long bookingId) {
         String cacheKey = "bookings:" + bookingId;
         Optional<PaymentDto> paymentCache = redisCacheService.get(cacheKey, PaymentDto.class);
@@ -110,6 +113,7 @@ public class PaymentService extends MoneyService {
         return dto;
     }
 
+    @Override
     public List<PaymentDto> getRevenueRangeByHotelId(Long hotelId,
                                                      Long rangeFrom, Long rangeTo,
                                                      LocalDateTime startTime, LocalDateTime endTime,

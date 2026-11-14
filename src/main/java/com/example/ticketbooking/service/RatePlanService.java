@@ -20,16 +20,18 @@ public class RatePlanService {
     private final RedisCacheService redisCacheService;
 
     public RatePlanDto getByHotelId(Long hotelId, Long ratePlanId) {
-        Optional<RatePlan> planCache = redisCacheService.get(String.valueOf(ratePlanId), RatePlan.class);
+        String cacheKey = "hotel:" + hotelId + ":rate-plan:" + ratePlanId;
+        Optional<RatePlanDto> planCache = redisCacheService.get(cacheKey, RatePlanDto.class);
         if (planCache.isPresent()) {
-            RatePlan plan = planCache.orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден в кэше"));
-            redisCacheService.set(String.valueOf(plan), plan, Duration.ofMinutes(10));
-            return mapPlanToDto(plan);
+            return planCache.get();
         }
+
         RatePlan plan = ratePlanRepository.findByHotelId(hotelId, ratePlanId)
                 .orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден в базе данных"));
-        redisCacheService.set(String.valueOf(plan.getId()), plan, Duration.ofMinutes(10));
-        return mapPlanToDto(plan);
+
+        RatePlanDto dto = mapPlanToDto(plan);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     public List<RatePlanDto> getByAllHotelId(Long hotelId,

@@ -18,17 +18,18 @@ public class HighlightService {
     private final RedisCacheService redisCacheService;
 
     public List<Long> getIdsByAllHotelId(Long hotelId) {
-        List<Highlight> highlightCache = redisCacheService.getList(String.valueOf(hotelId), Highlight.class);
+        String cacheKey = "highlights:" + hotelId;
+        List<Highlight> highlightCache = redisCacheService.getList(cacheKey, Highlight.class);
         if (highlightCache != null) {
             List<HighlightDto> dtos = this.mapHighlightsToDtos(highlightCache);
-            redisCacheService.set(String.valueOf(hotelId), dtos, Duration.ofMinutes(10));
+            redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
             return mapDtosToIds(dtos);
         }
         List<Highlight> highlights = highlightRepository.findAllByHotelId(hotelId);
         if (highlights == null) {
             return new ArrayList<>();
         }
-        redisCacheService.set(String.valueOf(hotelId), mapHighlightsToDtos(highlights), Duration.ofMinutes(10));
+        redisCacheService.set(cacheKey, mapHighlightsToDtos(highlights), Duration.ofMinutes(10));
         return mapDtosToIds(mapHighlightsToDtos(highlights));
     }
 

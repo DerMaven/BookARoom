@@ -25,60 +25,59 @@ public class GuestService {
     private final RedisCacheService redisCacheService;
 
     public GuestDto getById(Long guestId) {
-        Optional<Guest> guestCache = redisCacheService.get(String.valueOf(guestId), Guest.class);
+        String cacheKey = "guest:" + guestId;
+        Optional<GuestDto> guestCache = redisCacheService.get(cacheKey, GuestDto.class);
         if (guestCache.isPresent()) {
-            Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
-            redisCacheService.set(String.valueOf(guestId), guest, Duration.ofMinutes(5));
-            return mapGuestToDto(guest);
+            return guestCache.get();
         }
         Guest guest = guestRepository.findById(guestId)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
-        redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return mapGuestToDto(guest);
+
+        GuestDto dto = mapGuestToDto(guest);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     public GuestDto getByEmail(String email) {
-        Optional<Guest> guestCache = redisCacheService.get(String.valueOf(email), Guest.class);
+        String cacheKey = "guest:email:" + email;
+        Optional<GuestDto> guestCache = redisCacheService.get(cacheKey, GuestDto.class);
         if (guestCache.isPresent()) {
-            Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
-            redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return mapGuestToDto(guest);
+            return guestCache.get();
         }
         Guest guest = guestRepository.findByEmail(email)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
-        redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return mapGuestToDto(guest);
+
+        GuestDto dto = mapGuestToDto(guest);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     public GuestDto getByPhoneNumber(String phoneNumber) {
-        Optional<Guest> guestCache = redisCacheService.get(String.valueOf(phoneNumber), Guest.class);
+        String cacheKey = "guest:phone:" + phoneNumber;
+        Optional<GuestDto> guestCache = redisCacheService.get(cacheKey, GuestDto.class);
         if (guestCache.isPresent()) {
-            Guest guest = guestCache.orElseThrow(() -> new GuestNotFoundException("Гость не был найден в кэше"));
-            redisCacheService.set(String.valueOf(phoneNumber), guest, Duration.ofMinutes(5));
-            return mapGuestToDto(guest);
+            return guestCache.get();
         }
         Guest guest = guestRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new GuestNotFoundException("Гость не был найден в базе данных"));
-        redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-        return mapGuestToDto(guest);
+
+        GuestDto dto = mapGuestToDto(guest);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     public GuestDto createGuest(String firstName, String lastName, String email, String phoneNumber, LocalDate birthDate, String passportNumber) {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("createGuest");
         EntityManager em = emf.createEntityManager();
 
-        Optional<Guest> guestEmailCache = redisCacheService.get(String.valueOf(email), Guest.class);
+        Optional<GuestDto> guestEmailCache = redisCacheService.get("guest:email:" + email, GuestDto.class);
         if (guestEmailCache.isPresent()) {
-            Guest guest = guestEmailCache.get();
-            redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return mapGuestToDto(guest);
+            throw new GuestAlreadyExistsException("Гость уже существует!");
         }
 
-        Optional<Guest> guestPhoneCache = redisCacheService.get(String.valueOf(email), Guest.class);
+        Optional<GuestDto> guestPhoneCache = redisCacheService.get("guest:phone:" + phoneNumber, GuestDto.class);
         if (guestPhoneCache.isPresent()) {
-            Guest guest = guestPhoneCache.get();
-            redisCacheService.set(String.valueOf(email), guest, Duration.ofMinutes(5));
-            return mapGuestToDto(guest);
+            throw new GuestAlreadyExistsException("Гость уже существует!");
         }
 
         Optional<Guest> guestByEmail = guestRepository.findByEmail(email);
@@ -107,9 +106,9 @@ public class GuestService {
 
             em.getTransaction().commit();
 
-            redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
-
-            return mapGuestToDto(guest);
+            GuestDto dto = mapGuestToDto(guest);
+            redisCacheService.set("guest:" + guest.getId(), dto, Duration.ofMinutes(10));
+            return dto;
         } catch (Exception e) {
             if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw new GuestCreationException("Возникла ошибка при создании гостя");
@@ -122,9 +121,9 @@ public class GuestService {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("updateGuest");
         EntityManager em = emf.createEntityManager();
 
-        Optional<Guest> guestCache = redisCacheService.get(String.valueOf(guestId), Guest.class);
+        Optional<GuestDto> guestCache = redisCacheService.get(String.valueOf(guestId), GuestDto.class);
         if (guestCache.isPresent()) {
-            Guest guest = guestCache.get();
+            Guest guest = mapDtoToGuest(guestCache.get());
 
             if (request.firstName().isPresent()) guest.setFirstName(request.firstName().get());
             if (request.lastName().isPresent()) guest.setLastName(request.lastName().get());
@@ -132,7 +131,7 @@ public class GuestService {
             if (request.email().isPresent()) guest.setEmail(request.email().get());
             if (request.phoneNumber().isPresent()) guest.setPhoneNumber(request.phoneNumber().get());
             if (request.passportNumber().isPresent()) guest.setPassportNumber(request.passportNumber().get());
-            redisCacheService.set(String.valueOf(guestId), guest, Duration.ofMinutes(5));
+            redisCacheService.set("guest:" + guest.getId(), guest, Duration.ofMinutes(1));
             return mapGuestToDto(guest);
         }
 
@@ -153,7 +152,7 @@ public class GuestService {
 
             em.getTransaction().commit();
 
-            redisCacheService.set(String.valueOf(guest.getId()), guest, Duration.ofMinutes(10));
+            redisCacheService.set("guest:" + guest.getId(), guest, Duration.ofMinutes(10));
 
             return mapGuestToDto(guest);
         } catch (Exception e) {
