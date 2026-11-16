@@ -1,5 +1,6 @@
 package com.example.ticketbooking.service;
 
+import com.example.ticketbooking.dto.DateRangeParams;
 import com.example.ticketbooking.dto.PaymentDto;
 import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.model.Payment;
@@ -36,12 +37,17 @@ public abstract class MoneyService {
 
     public abstract Map<Long, PaymentDto> getPaymentsByBookingIds(List<Long> bookingIds);
 
-    public abstract List<PaymentDto> getAllByHotelId(Long hotelId,
-                                                     LocalDateTime startTime, LocalDateTime endTime,
-                                                     SortParams params);
+    public abstract PaymentDto getById(Long paymentId);
 
-    public abstract List<PaymentDto> getRevenueRangeByHotelId(Long hotelId,
-                                                              Long rangeFrom, Long rangeTo,
-                                                              LocalDateTime startTime, LocalDateTime endTime,
-                                                              SortParams params);
+    public abstract List<PaymentDto> getAllByHotelId(Long hotelId,
+                                                     DateRangeParams dateRangeParams,
+                                                     SortParams sortParams);
+
+    public abstract List<PaymentDto> getAllByGuestId(Long guestId,
+                                            DateRangeParams dateRangeParams,
+                                            SortParams sortParams);
+
+//    public abstract Double getRevenueRangeByHotelId(Long hotelId,
+//                                                              DateRangeParams dateRangeParams,
+//                                                              SortParams sortParams);
 }

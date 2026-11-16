@@ -1,5 +1,6 @@
 package com.example.ticketbooking.service;
 
+import com.example.ticketbooking.dto.DateRangeParams;
 import com.example.ticketbooking.dto.PaymentDto;
 import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.exception.*;
@@ -47,17 +48,17 @@ public class RefundService extends MoneyService {
 
     @Override
     public List<PaymentDto> getAllByHotelId(Long hotelId,
-                                            LocalDateTime startTime, LocalDateTime endTime,
-                                            SortParams params) {
+                                            DateRangeParams dateRangeParams,
+                                            SortParams sortParams) {
         if (hotelId == null || hotelId <= 0) throw new InvalidHotelIdException("Указан неверный ID отеля");
-        if (startTime == null || endTime == null || startTime.isAfter(endTime))
+        if (dateRangeParams.getStartTime() == null || dateRangeParams.getEndTime() == null || dateRangeParams.getStartTime().isAfter(dateRangeParams.getEndTime()))
             throw new DateTimeException("Начало временного отрезка не может быть позже конца");
 
-        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
-        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
-        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
+        int limitSize = (sortParams.getSize() != null && sortParams.getSize() > 0) ? Math.min(100, sortParams.getSize()) : 10;
+        String sortField = (sortParams.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(sortParams.getSortBy())) ? sortParams.getSortBy() : "id";
+        String sortDir = (sortParams.getDirection() != null) ? sortParams.getDirection().toLowerCase() : "asc";
 
-        String cacheKey = "hotels:" + hotelId + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+        String cacheKey = "hotels:" + hotelId + ":" + dateRangeParams.getStartTime() + ":" + dateRangeParams.getEndTime() + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
         List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
         if (!paymentCache.isEmpty()) {
             return paymentCache;
@@ -65,8 +66,42 @@ public class RefundService extends MoneyService {
 
         Sort sort = createSort(sortField, sortDir);
         List<Payment> payments = paymentRepository.findAllByHotelId(hotelId,
-                startTime, endTime,
+                dateRangeParams.getStartTime(), dateRangeParams.getEndTime(),
                 Limit.of(limitSize), sort)
+                .stream()
+                .filter(payment -> payment.getStatus() == PaymentStatus.REFUNDED)
+                .toList();
+        if (payments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<PaymentDto> dtos = mapPaymentsToDtos(payments);
+        redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(50));
+        return dtos;
+    }
+
+    @Override
+    public List<PaymentDto> getAllByGuestId(Long guestId,
+                                            DateRangeParams dateRangeParams,
+                                            SortParams sortParams) {
+        if (guestId == null || guestId <= 0) throw new InvalidHotelIdException("Указан неверный ID гостя");
+        if (dateRangeParams.getStartTime() == null || dateRangeParams.getEndTime() == null || dateRangeParams.getStartTime().isAfter(dateRangeParams.getEndTime()))
+            throw new DateTimeException("Начало временного отрезка не может быть позже конца");
+
+        int limitSize = (sortParams.getSize() != null && sortParams.getSize() > 0) ? Math.min(100, sortParams.getSize()) : 10;
+        String sortField = (sortParams.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(sortParams.getSortBy())) ? sortParams.getSortBy() : "id";
+        String sortDir = (sortParams.getDirection() != null) ? sortParams.getDirection().toLowerCase() : "asc";
+
+        String cacheKey = "guests:payments:" + guestId + ":" + dateRangeParams.getStartTime() + ":" + dateRangeParams.getEndTime() + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+        List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
+        if (!paymentCache.isEmpty()) {
+            return paymentCache;
+        }
+
+        Sort sort = createSort(sortField, sortDir);
+        List<Payment> payments = paymentRepository.findAllByGuestId(guestId,
+                        dateRangeParams.getStartTime(), dateRangeParams.getEndTime(),
+                        Limit.of(limitSize), sort)
                 .stream()
                 .filter(payment -> payment.getStatus() == PaymentStatus.REFUNDED)
                 .toList();
@@ -101,6 +136,24 @@ public class RefundService extends MoneyService {
     }
 
     @Override
+    public PaymentDto getById(Long paymentId) {
+        String cacheKey = "payments:" + paymentId;
+        Optional<PaymentDto> paymentCache = redisCacheService.get(cacheKey, PaymentDto.class);
+
+        if (paymentCache.isPresent()) {
+            return paymentCache.get();
+        }
+
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException("Платеж не был найден в базе данных"));
+
+
+        PaymentDto dto = mapPaymentToDto(payment);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
+    }
+
+    @Override
     public void setPriceByRatePlan(Payment payment, Long ratePlanId, Long nights) {
         RatePlan ratePlan = ratePlanRepository.findById(ratePlanId)
                 .orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден"));
@@ -119,40 +172,39 @@ public class RefundService extends MoneyService {
                 ));
     }
 
-    @Override
-    public List<PaymentDto> getRevenueRangeByHotelId(Long hotelId, Long rangeFrom, Long rangeTo, LocalDateTime startTime, LocalDateTime endTime, SortParams params) {
-        if (hotelId == null || hotelId <= 0) throw new InvalidHotelIdException("Указан неверный ID отеля");
-        if (rangeFrom == null || rangeTo == null || rangeFrom > rangeTo)
-            throw new InvalidRevenueException("Начало диапазона не может быть больше конца");
-        if (startTime == null || endTime == null || startTime.isAfter(endTime))
-            throw new DateTimeException("Начало временного отрезка не может быть позже конца");
-
-        int limitSize = (params.getSize() != null && params.getSize() > 0) ? Math.min(100, params.getSize()) : 10;
-        String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
-        String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
-
-        String cacheKey = "hotels:" + hotelId + ":" + rangeFrom + ":" + rangeTo + ":" + startTime + ":" + endTime + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
-        List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
-        if (!paymentCache.isEmpty()) {
-            return paymentCache;
-        }
-
-        Sort sort = createSort(sortField, sortDir);
-        List<Payment> payments = paymentRepository.findRevenueRangeByHotelId(hotelId,
-                        rangeFrom, rangeTo,
-                        startTime, endTime,
-                        Limit.of(limitSize), sort)
-                .stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.REFUNDED)
-                .toList();
-        if (payments.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        List<PaymentDto> dtos = mapPaymentsToDtos(payments);
-        redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(30));
-        return dtos;
-    }
+//    @Override
+//    public List<PaymentDto> getRevenueRangeByHotelId(Long hotelId,
+//                                                     DateRangeParams dateRangeParams,
+//                                                     SortParams sortParams) {
+//        if (hotelId == null || hotelId <= 0) throw new InvalidHotelIdException("Указан неверный ID отеля");
+//        if (dateRangeParams.getStartTime() == null || dateRangeParams.getEndTime() == null || dateRangeParams.getStartTime().isAfter(dateRangeParams.getEndTime()))
+//            throw new DateTimeException("Начало временного отрезка не может быть позже конца");
+//
+//        int limitSize = (sortParams.getSize() != null && sortParams.getSize() > 0) ? Math.min(100, sortParams.getSize()) : 10;
+//        String sortField = (sortParams.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(sortParams.getSortBy())) ? sortParams.getSortBy() : "id";
+//        String sortDir = (sortParams.getDirection() != null) ? sortParams.getDirection().toLowerCase() : "asc";
+//
+//        String cacheKey = "hotels:" + hotelId + ":" + ":" + dateRangeParams.getStartTime() + ":" + dateRangeParams.getEndTime() + ":sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+//        List<PaymentDto> paymentCache = redisCacheService.getList(cacheKey, PaymentDto.class);
+//        if (!paymentCache.isEmpty()) {
+//            return paymentCache;
+//        }
+//
+//        Sort sort = createSort(sortField, sortDir);
+//        List<Payment> payments = paymentRepository.findRevenueRangeByHotelId(hotelId,
+//                        dateRangeParams.getStartTime(), dateRangeParams.getEndTime(),
+//                        Limit.of(limitSize), sort)
+//                .stream()
+//                .filter(payment -> payment.getStatus() == PaymentStatus.REFUNDED)
+//                .toList();
+//        if (payments.isEmpty()) {
+//            return new ArrayList<>();
+//        }
+//
+//        List<PaymentDto> dtos = mapPaymentsToDtos(payments);
+//        redisCacheService.set(cacheKey, dtos, Duration.ofSeconds(30));
+//        return dtos;
+//    }
 
     private Sort createSort(String sortBy, String direction) {
         String field = (sortBy != null && !sortBy.isBlank()) ? sortBy : "id";
