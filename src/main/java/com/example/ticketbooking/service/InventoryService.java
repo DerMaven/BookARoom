@@ -36,6 +36,22 @@ public class InventoryService {
         return inventory;
     }
 
+    public DailyInventoryDto getTodayAvailabilityDto(Long hotelId, LocalDate date) {
+        String cacheKey = "inventory:" + hotelId + ":" + date;
+
+        Optional<DailyInventoryDto> inventoryCache = redisCacheService.get(cacheKey, DailyInventoryDto.class);
+        if (inventoryCache.isPresent()) {
+            return inventoryCache.get();
+        }
+
+        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, date)
+                .orElseThrow(() -> new InventoryNotFoundException("Инвентарь не был найден"));
+
+        DailyInventoryDto dto = mapInventoryToDto(inventory);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(2));
+        return dto;
+    }
+
     private DailyInventoryDto mapInventoryToDto(DailyInventory inventory) {
         return new DailyInventoryDto(
                 inventory.getId(),
