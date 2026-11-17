@@ -14,7 +14,7 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 @Slf4j
 public class InventoryController {
-    private InventoryService inventoryService;
+    private final InventoryService inventoryService;
 
     @GetMapping("/{hotelId}")
     public DailyInventoryDto getTodayAvailability(@PathVariable Long hotelId,

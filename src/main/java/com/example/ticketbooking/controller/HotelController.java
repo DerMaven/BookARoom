@@ -4,12 +4,9 @@ import com.example.ticketbooking.dto.HotelDto;
 import com.example.ticketbooking.dto.RatePlanDto;
 import com.example.ticketbooking.dto.RoomDto;
 import com.example.ticketbooking.dto.SortParams;
-import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.service.HotelService;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class HotelController {
-    private HotelService hotelService;
+    private final HotelService hotelService;
 
     @GetMapping("/{hotelId}")
     public HotelDto getById(@PathVariable Long hotelId,

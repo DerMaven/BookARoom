@@ -67,7 +67,7 @@ public class GuestController {
 
     @Getter
     @Setter
-    public class GuestParams {
+    public static class GuestParams {
         private String firstName;
         private String lastName;
         private String email;

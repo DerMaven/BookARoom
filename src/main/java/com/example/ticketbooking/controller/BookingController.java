@@ -74,9 +74,9 @@ public class BookingController {
         );
     }
 
-    @GetMapping("/{guestId}")
+    @GetMapping("/{guestId}/{bookingId}")
     public BookingDto getByGuestId(@PathVariable Long bookingId,
-                                   @RequestParam Long guestId,
+                                   @PathVariable Long guestId,
                                    HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return bookingService.getByGuestId(bookingId, guestId);
