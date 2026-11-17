@@ -51,15 +51,15 @@ public class GuestController {
         return guestService.getById(guestId);
     }
 
-    @GetMapping
-    public GuestDto getByEmail(@RequestParam String email,
+    @GetMapping("/email/{email}")
+    public GuestDto getByEmail(@PathVariable String email,
                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return guestService.getByEmail(email);
     }
 
-    @GetMapping
-    public GuestDto getByNumber(@RequestParam String phoneNumber,
+    @GetMapping("/phone/{phoneNumber}")
+    public GuestDto getByNumber(@PathVariable String phoneNumber,
                                HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return guestService.getByPhoneNumber(phoneNumber);
