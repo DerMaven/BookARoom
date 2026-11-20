@@ -42,8 +42,9 @@ public class DailyInventory {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "rooms",
-            joinColumns = { @JoinColumn(name = "room_id") }
+            name = "daily_inventory_rooms",
+            joinColumns = @JoinColumn(name = "daily_inventory_id"),
+            inverseJoinColumns = @JoinColumn(name = "room_id")
     )
     private List<Room> rooms;
 }
