@@ -1,9 +1,9 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:25-alpine AS build
 WORKDIR /app
 COPY . .
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw clean package -DskipTests -X
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
