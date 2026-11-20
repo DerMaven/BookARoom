@@ -9,6 +9,6 @@ import java.util.List;
 
 @Repository
 public interface HighlightRepository extends JpaRepository<Highlight, Long> {
-    @Query("select hs from Highlight hs join Hotel ht on hs.hotel.id = ht.id where ht.id = :hotelId")
+    @Query("select hs from Highlight hs where hs.hotel.id = :hotelId")
     List<Highlight> findAllByHotelId(Long hotelId);
 }
