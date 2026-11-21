@@ -29,7 +29,7 @@ public class RatePlanService {
             return planCache.get();
         }
 
-        RatePlan plan = ratePlanRepository.findByHotelId(hotelId, ratePlanId)
+        RatePlan plan = ratePlanRepository.findByHotelIdAndId(hotelId, ratePlanId)
                 .orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден в базе данных"));
 
         RatePlanDto dto = mapPlanToDto(plan);
@@ -43,22 +43,21 @@ public class RatePlanService {
         String sortField = (params.getSortBy() != null && ALLOWED_SORT_FIELDS.contains(params.getSortBy())) ? params.getSortBy() : "id";
         String sortDir = (params.getDirection() != null) ? params.getDirection().toLowerCase() : "asc";
 
-
-        List<RatePlan> plansCache = redisCacheService.getList(String.valueOf(hotelId), RatePlan.class);
-        if (plansCache != null) {
-            List<RatePlanDto> dtos = this.mapPlansToDtos(plansCache);
-            redisCacheService.set(String.valueOf(hotelId), dtos, Duration.ofMinutes(10));
-            return dtos;
+        String cacheKey = "plans:hotel:" + hotelId + "sort:" + sortField + ":" + sortDir + ":size:" + limitSize;
+        List<RatePlanDto> plansCache = redisCacheService.getList(cacheKey, RatePlanDto.class);
+        if (!plansCache.isEmpty()) {
+            return plansCache;
         }
 
         Sort sort = createSort(sortField, sortDir);
 
         List<RatePlan> plans = ratePlanRepository.findAllByHotelId(hotelId, Limit.of(limitSize), sort);
-        if (plans == null) {
-            throw new RatePlanNotFoundException("Ни один из тарифов не был найден у отеля");
+        if (plans.isEmpty()) {
+            return new ArrayList<>();
         }
-        redisCacheService.set(String.valueOf(hotelId), this.mapPlansToDtos(plans), Duration.ofMinutes(10));
-        return this.mapPlansToDtos(plans);
+        List<RatePlanDto> dtos = mapPlansToDtos(plans);
+        redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
+        return dtos;
     }
 
     private RatePlanDto mapPlanToDto(RatePlan plan) {
