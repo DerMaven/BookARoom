@@ -1,14 +1,12 @@
 package com.example.ticketbooking.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
-@RequiredArgsConstructor
 public class SortParams {
     private Integer size;
     private String sortBy;
