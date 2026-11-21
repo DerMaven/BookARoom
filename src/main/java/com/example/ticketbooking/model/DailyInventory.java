@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -25,8 +25,8 @@ public class DailyInventory {
     private Long id;
 
     @Column(name = "inventory_date")
-    @DateTimeFormat
-    private LocalDate inventoryDate;
+    @DateTimeFormat(pattern = "dd.MM.yyyy HH:mm:ss")
+    private LocalDateTime inventoryDate;
 
     @Column(name = "total_stock")
     @PositiveOrZero
