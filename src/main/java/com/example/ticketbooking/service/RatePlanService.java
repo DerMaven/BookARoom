@@ -28,7 +28,6 @@ public class RatePlanService {
         if (planCache.isPresent()) {
             return planCache.get();
         }
-
         RatePlan plan = ratePlanRepository.findByHotelIdAndId(hotelId, ratePlanId)
                 .orElseThrow(() -> new RatePlanNotFoundException("Тариф не был найден в базе данных"));
 
