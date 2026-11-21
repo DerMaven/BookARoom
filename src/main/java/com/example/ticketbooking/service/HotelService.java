@@ -1,9 +1,6 @@
 package com.example.ticketbooking.service;
 
-import com.example.ticketbooking.dto.HotelDto;
-import com.example.ticketbooking.dto.RatePlanDto;
-import com.example.ticketbooking.dto.RoomDto;
-import com.example.ticketbooking.dto.SortParams;
+import com.example.ticketbooking.dto.*;
 import com.example.ticketbooking.exception.HotelNotFoundException;
 import com.example.ticketbooking.model.Hotel;
 import com.example.ticketbooking.model.enums.Currency;
@@ -29,23 +26,20 @@ public class HotelService {
 
     private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "country", "city", "name", "description"));
 
-
     public HotelDto getById(Long hotelId) {
-        Optional<Hotel> hotelCache = redisCacheService.get(String.valueOf(hotelId), Hotel.class);
         String cacheKey = "hotels:" + hotelId;
+        Optional<HotelDto> hotelCache = redisCacheService.get(cacheKey, HotelDto.class);
         if (hotelCache.isPresent()) {
-            Hotel hotel = hotelCache.orElseThrow(() -> new HotelNotFoundException("Отель не был найден в кэше"));
-            List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotelId, new SortParams(10, "city", "asc"));
-            List<Long> highlightsIds = highlightService.getIdsByAllHotelId(hotelId);
-            redisCacheService.set(cacheKey, hotel, Duration.ofMinutes(10));
-            return mapHotelToDto(hotel, ratePlanDtos, highlightsIds);
+            return hotelCache.get();
         }
+
         Hotel hotel = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new HotelNotFoundException("Отель не был найден в базе данных"));
-        List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotel.getId(), new SortParams(10, "city", "asc"));
-        List<Long> highlightsIds = highlightService.getIdsByAllHotelId(hotel.getId());
-        redisCacheService.set(cacheKey, hotel, Duration.ofMinutes(10));
-        return mapHotelToDto(hotel, ratePlanDtos, highlightsIds);
+        List<RatePlanDto> ratePlanDtos = ratePlanService.getByAllHotelId(hotel.getId(), new SortParams(10, "price", "desc"));
+        List<HighlightDto> highlights = highlightService.getByAllHotelId(hotel.getId());
+        HotelDto dto = mapHotelToDto(hotel, ratePlanDtos, highlights);
+        redisCacheService.set(cacheKey, dto, Duration.ofMinutes(10));
+        return dto;
     }
 
     public List<HotelDto> getAllHotels(SortParams params) {
@@ -66,7 +60,7 @@ public class HotelService {
         List<HotelDto> dtos = hotels.stream().map(hotel -> mapHotelToDto(
                         hotel,
                         ratePlanService.getByAllHotelId(hotel.getId(), new SortParams(10, "city", "asc")),
-                        highlightService.getIdsByAllHotelId(hotel.getId()))).toList();
+                        highlightService.getByAllHotelId(hotel.getId()))).toList();
 
         if (!dtos.isEmpty()) {
             redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
@@ -91,8 +85,8 @@ public class HotelService {
 
         List<HotelDto> dtos = hotels.stream().map(hotel -> mapHotelToDto(
                         hotel,
-                        ratePlanService.getByAllHotelId(hotel.getId(), new SortParams(10, "city", "asc")),
-                        highlightService.getIdsByAllHotelId(hotel.getId())
+                        ratePlanService.getByAllHotelId(hotel.getId(), new SortParams(10, "price", "desc")),
+                        highlightService.getByAllHotelId(hotel.getId())
                 )).toList();
         if (!dtos.isEmpty()) {
             redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
@@ -128,7 +122,7 @@ public class HotelService {
         return Sort.by(dirr, field);
     }
 
-    private HotelDto mapHotelToDto(Hotel hotel, List<RatePlanDto> ratePlans, List<Long> highlightsIds){
+    private HotelDto mapHotelToDto(Hotel hotel, List<RatePlanDto> ratePlans, List<HighlightDto> highlights){
         return new HotelDto(
                 hotel.getId(),
                 hotel.getName(),
@@ -137,7 +131,7 @@ public class HotelService {
                 hotel.getCity(),
                 hotel.getAddress(),
                 ratePlans,
-                highlightsIds
+                highlights
         );
     }
 }

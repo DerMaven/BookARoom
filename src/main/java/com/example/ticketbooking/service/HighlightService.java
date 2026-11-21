@@ -17,29 +17,24 @@ public class HighlightService {
     private final HighlightRepository highlightRepository;
     private final RedisCacheService redisCacheService;
 
-    public List<Long> getIdsByAllHotelId(Long hotelId) {
+    public List<HighlightDto> getByAllHotelId(Long hotelId) {
         String cacheKey = "highlights:" + hotelId;
-        List<Highlight> highlightCache = redisCacheService.getList(cacheKey, Highlight.class);
-        if (highlightCache != null) {
-            List<HighlightDto> dtos = this.mapHighlightsToDtos(highlightCache);
-            redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
-            return mapDtosToIds(dtos);
+        List<HighlightDto> highlightCache = redisCacheService.getList(cacheKey, HighlightDto.class);
+        if (!highlightCache.isEmpty()) {
+            return highlightCache;
         }
         List<Highlight> highlights = highlightRepository.findAllByHotelId(hotelId);
-        if (highlights == null) {
+        if (highlights.isEmpty()) {
             return new ArrayList<>();
         }
-        redisCacheService.set(cacheKey, mapHighlightsToDtos(highlights), Duration.ofMinutes(10));
-        return mapDtosToIds(mapHighlightsToDtos(highlights));
+        List<HighlightDto> dtos = mapHighlightsToDtos(highlights);
+        redisCacheService.set(cacheKey, dtos, Duration.ofMinutes(10));
+        return dtos;
     }
 
 
     private List<HighlightDto> mapHighlightsToDtos(List<Highlight> highlights) {
         return highlights.stream().map(this::mapHighlightToDto).toList();
-    }
-
-    private List<Long> mapDtosToIds(List<HighlightDto> dtos) {
-        return dtos.stream().map(HighlightDto::id).toList();
     }
 
     private HighlightDto mapHighlightToDto(Highlight highlight) {
