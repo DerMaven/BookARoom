@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -19,7 +19,7 @@ public class InventoryService {
     private final RedisCacheService redisCacheService;
 
     @Transactional
-    public DailyInventory getTodayAvailability(Long hotelId, LocalDate date) {
+    public DailyInventory getTodayAvailability(Long hotelId, LocalDateTime date) {
         String cacheKey = "inventory:" + hotelId + ":" + date;
 
         Optional<DailyInventory> inventoryCache = redisCacheService.get(cacheKey, DailyInventory.class);
@@ -34,7 +34,7 @@ public class InventoryService {
         return inventory;
     }
 
-    public DailyInventoryDto getTodayAvailabilityDto(Long hotelId, LocalDate date) {
+    public DailyInventoryDto getTodayAvailabilityDto(Long hotelId, LocalDateTime date) {
         String cacheKey = "inventory:" + hotelId + ":" + date;
 
         Optional<DailyInventoryDto> inventoryCache = redisCacheService.get(cacheKey, DailyInventoryDto.class);

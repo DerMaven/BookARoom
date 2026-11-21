@@ -35,12 +35,12 @@ public class Booking {
     private String bookingReference;
 
     @Column(name = "check_in")
-    @DateTimeFormat(pattern = "dd/MM/yyyy HH:mm:ss")
-    private LocalDate checkIn;
+    @DateTimeFormat(pattern = "dd.MM.yyyy HH:mm:ss")
+    private LocalDateTime checkIn;
 
     @Column(name = "check_out")
-    @DateTimeFormat(pattern = "dd/MM/yyyy HH:mm:ss")
-    private LocalDate checkOut;
+    @DateTimeFormat(pattern = "dd.MM.yyyy HH:mm:ss")
+    private LocalDateTime checkOut;
 
     @Column(name = "nights")
     @PositiveOrZero

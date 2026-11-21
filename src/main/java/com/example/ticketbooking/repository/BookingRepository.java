@@ -45,7 +45,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             " and b.checkIn = :checkIn" +
             " and b.checkOut = :checkOut" +
             " order by :checkOut desc, :checkIn desc")
-    Optional<Booking> findByHotelId(Long hotelId, LocalDate checkIn, LocalDate checkOut);
+    Optional<Booking> findByHotelId(Long hotelId, LocalDateTime checkIn, LocalDateTime checkOut);
 
     @Query("select b from Booking b" +
             " where b.bookingReference = :reference" +

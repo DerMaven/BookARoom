@@ -17,11 +17,10 @@ public interface DailyInventoryRepository extends JpaRepository<DailyInventory, 
 
     @Query("select di from DailyInventory" +
             " di where di.hotel.id = :hotelId" +
-            " and di.id = :inventoryId" +
             " and di.inventoryDate = :date" +
             " order by di.inventoryDate desc" +
             " limit 1")
-    Optional<DailyInventory> findByHotelId(Long hotelId, LocalDate date);
+    Optional<DailyInventory> findByHotelId(Long hotelId, LocalDateTime date);
 
     @Query("select di from DailyInventory di" +
             " where di.hotel.id = :hotelId" +

@@ -97,8 +97,8 @@ public class BookingController {
         private Long primaryGuestId;
         private List<Long> guestsIds;
         private PaymentMethod paymentMethod;
-        private LocalDate checkIn;
-        private LocalDate checkOut;
+        private LocalDateTime checkIn;
+        private LocalDateTime checkOut;
     }
 
     @Getter

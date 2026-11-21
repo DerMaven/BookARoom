@@ -4,13 +4,14 @@ import com.example.ticketbooking.model.enums.Currency;
 import com.example.ticketbooking.model.enums.RoomType;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record BookingDto(
         Long bookingId,
         Long roomId,
         RoomType roomType,
-        LocalDate checkIn,
-        LocalDate checkOut,
+        LocalDateTime checkIn,
+        LocalDateTime checkOut,
         Long nights,
         Long pricePerNight,
         Long totalAmount,

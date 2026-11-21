@@ -39,7 +39,7 @@ public class  BookingService {
 
     private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "isAvailable", "checkIn", "checkOut", "totalAmount"));
 
-    public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long primaryGuestId, List<Long> guestIds, PaymentMethod paymentMethod, LocalDate checkIn, LocalDate checkOut) {
+    public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long primaryGuestId, List<Long> guestIds, PaymentMethod paymentMethod, LocalDateTime checkIn, LocalDateTime checkOut) {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("createBooking");
         EntityManager em = emf.createEntityManager();
 
@@ -343,7 +343,10 @@ public class  BookingService {
         return Sort.by(dirr, field);
     }
 
-    private int getNights(LocalDate checkIn, LocalDate checkOut) {
-        return checkIn.datesUntil(checkOut).toList().size();
+    private int getNights(LocalDateTime checkIn, LocalDateTime checkOut) {
+        return checkIn.toLocalDate()
+                .datesUntil(checkOut.toLocalDate())
+                .toList()
+                .size();
     }
 }

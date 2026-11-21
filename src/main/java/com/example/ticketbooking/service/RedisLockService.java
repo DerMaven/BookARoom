@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class RedisLockService {
     private final StringRedisTemplate redisTemplate;
     private static final String LOCK_ROOM = "lock:room";
 
-    public Long acquireLock(Long roomId, Long bookingId, LocalDate checkIn, LocalDate checkOut) {
+    public Long acquireLock(Long roomId, Long bookingId, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<LocalDate> datesToLock = getDatesBetween(checkIn, checkOut);
         List<String> acquiredKeys = new ArrayList<>();
 
@@ -41,7 +42,7 @@ public class RedisLockService {
     }
 
 
-    public void releaseLock(Long roomId, Long bookingId, LocalDate checkIn, LocalDate checkOut) {
+    public void releaseLock(Long roomId, Long bookingId, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<LocalDate> datesToUnlock = getDatesBetween(checkIn, checkOut);
         List<String> acquiredKeys = new ArrayList<>();
 
@@ -63,7 +64,12 @@ public class RedisLockService {
         }
     }
 
-    private List<LocalDate> getDatesBetween(LocalDate checkIn, LocalDate checkOut) {
-        return checkIn.datesUntil(checkOut).toList();
+    private List<LocalDate> getDatesBetween(LocalDateTime checkIn, LocalDateTime checkOut) {
+        if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
+            return List.of();
+        }
+        return checkIn.toLocalDate()
+                .datesUntil(checkOut.toLocalDate())
+                .toList();
     }
 }
