@@ -13,9 +13,7 @@ import java.util.Optional;
 @Repository
 public interface RatePlanRepository extends JpaRepository<RatePlan, Long> {
 
-    @Query("select rp from RatePlan rp join Hotel h on rp.hotel.id = h.id where h.id = :hotelId order by :sort limit :limit")
     List<RatePlan> findAllByHotelId(Long hotelId, Limit limit, Sort sort);
 
-    @Query("select rp from RatePlan rp join Hotel h on rp.hotel.id = h.id where h.id = :hotelId and rp.id = :ratePlanId")
-    Optional<RatePlan> findByHotelId(Long hotelId, Long ratePlanId);
+    Optional<RatePlan> findByHotelIdAndId(Long hotelId, Long ratePlanId);
 }
