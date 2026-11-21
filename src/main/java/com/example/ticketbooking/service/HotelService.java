@@ -81,7 +81,7 @@ public class HotelService {
         }
 
         Sort sort = createSort(sortField, sortDir);
-        List<Hotel> hotels = hotelRepository.findByCity(city, Limit.of(limitSize), sort);
+        List<Hotel> hotels = hotelRepository.findByCityIgnoreCase(city, Limit.of(limitSize), sort);
 
         List<HotelDto> dtos = hotels.stream().map(hotel -> mapHotelToDto(
                         hotel,
@@ -99,7 +99,7 @@ public class HotelService {
     }
 
     public List<RoomDto> getAllAvailableHotelRooms(Long hotelId, SortParams params) {
-        return roomService.getAllHotelRooms(hotelId, params);
+        return roomService.getAllAvailableHotelRooms(hotelId, params);
     }
 
     public List<RatePlanDto> getRatePlans(Long hotelId, SortParams params) {

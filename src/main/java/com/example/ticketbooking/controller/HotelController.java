@@ -34,7 +34,7 @@ public class HotelController {
     }
 
     @GetMapping("/city")
-    public List<HotelDto> getAllByCity(@RequestParam String city,
+    public List<HotelDto> getAllByCity(@RequestParam(name = "city") String city,
                                        SortParams params,
                                        HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
@@ -75,7 +75,7 @@ public class HotelController {
     }
 
     @GetMapping("/{hotelId}/rate-plans/{ratePlanId}")
-    public RatePlanDto getAllRatePlans(@PathVariable Long hotelId,
+    public RatePlanDto getRatePlan(@PathVariable Long hotelId,
                                          @PathVariable Long ratePlanId,
                                          HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
