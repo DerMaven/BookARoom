@@ -9,7 +9,7 @@ public record HotelDto(
         String country,
         String city,
         String address,
-        List<RatePlanDto> ratePlanIds,
-        List<Long> highlightIds
+        List<RatePlanDto> ratePlans,
+        List<HighlightDto> highlights
 ) {
 }
