@@ -24,7 +24,7 @@ public class BookingController {
 
     @PostMapping("/{hotelId}")
     public BookingDto create(@PathVariable Long hotelId,
-                             @RequestBody BookingCreateParams params,
+                             BookingCreateParams params,
                              HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return bookingService.createBooking(
@@ -52,7 +52,7 @@ public class BookingController {
 
     @GetMapping("/all-guest/{guestId}")
     public List<BookingDto> getAllByGuestId(@PathVariable Long guestId,
-                                            @RequestBody BookingGetAllParams params,
+                                            BookingGetAllParams params,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return bookingService.getAllByGuestId(
@@ -64,7 +64,7 @@ public class BookingController {
 
     @GetMapping("/all-hotel/{hotelId}")
     public List<BookingDto> getAllByHotelId(@PathVariable Long hotelId,
-                                            @RequestBody BookingGetAllParams params,
+                                            BookingGetAllParams params,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return bookingService.getAllByHotelId(

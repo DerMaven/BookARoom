@@ -23,8 +23,8 @@ public class PaymentController {
 
     @GetMapping("/hotel/all")
     public List<PaymentDto> getAllByHotelId(@RequestParam Long hotelId,
-                                            @RequestParam DateRangeParams rangeParams,
-                                            @RequestParam SortParams sortParams,
+                                            DateRangeParams rangeParams,
+                                            SortParams sortParams,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return paymentService.getAllByHotelId(hotelId, rangeParams, sortParams);
@@ -32,8 +32,8 @@ public class PaymentController {
 
     @GetMapping("/guest/all")
     public List<PaymentDto> getAllByGuestId(@RequestParam Long guestId,
-                                            @RequestParam DateRangeParams rangeParams,
-                                            @RequestParam SortParams sortParams,
+                                            DateRangeParams rangeParams,
+                                            SortParams sortParams,
                                             HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return paymentService.getAllByGuestId(guestId, rangeParams, sortParams);

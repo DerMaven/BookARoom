@@ -20,7 +20,7 @@ public class GuestController {
     private final GuestService guestService;
 
     @PostMapping("/new")
-    public GuestDto create(@RequestBody GuestParams params,
+    public GuestDto create(GuestParams params,
                            HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return guestService.createGuest(
@@ -35,7 +35,7 @@ public class GuestController {
 
     @PutMapping("/{guestId}")
     public GuestDto update(@PathVariable Long guestId,
-                           @RequestBody UpdateGuestRequest params,
+                           UpdateGuestRequest params,
                            HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return guestService.updateGuest(

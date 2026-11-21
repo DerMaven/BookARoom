@@ -27,17 +27,15 @@ public class HotelController {
     }
 
     @GetMapping
-    public List<HotelDto> getAll(@RequestParam SortParams params,
+    public List<HotelDto> getAll(SortParams params,
                                  HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
-        return hotelService.getAllHotels(
-                params
-        );
+        return hotelService.getAllHotels(params);
     }
 
     @GetMapping("/city")
     public List<HotelDto> getAllByCity(@RequestParam String city,
-                                       @RequestParam SortParams params,
+                                       SortParams params,
                                        HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return hotelService.getAllByCity(city, params);
@@ -45,7 +43,7 @@ public class HotelController {
 
     @GetMapping("/{hotelId}/rooms")
     public List<RoomDto> getAllAvailableRooms(@PathVariable Long hotelId,
-                                              @RequestParam SortParams params,
+                                              SortParams params,
                                               HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return hotelService.getAllAvailableHotelRooms(
@@ -56,7 +54,7 @@ public class HotelController {
 
     @GetMapping("/rooms")
     public List<RoomDto> getAllRooms(@RequestParam Long hotelId,
-                                     @RequestParam SortParams params,
+                                     SortParams params,
                                      HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return hotelService.getAllHotelRooms(
@@ -67,7 +65,7 @@ public class HotelController {
 
     @GetMapping("/{hotelId}/rate-plans")
     public List<RatePlanDto> getAllRatePlans(@PathVariable Long hotelId,
-                                             @RequestParam SortParams params,
+                                             SortParams params,
                                              HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return hotelService.getRatePlans(
