@@ -30,10 +30,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hotel_booking
+      SPRING_DATASOURCE_URL: jdbc:postgresql://hotel-postgres:5432/hotel_booking
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: 12345
-      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_HOST: hotel-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: UKGarageBruv1
     depends_on:
