@@ -14,7 +14,7 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
 
     List<Hotel> findAllBy(Limit limit, Sort sort);
 
-    List<Hotel> findByCity(String city, Limit limit, Sort sort);
+    List<Hotel> findByCityIgnoreCase(String city, Limit limit, Sort sort);
 
     @Query("select count(b.id) from Hotel h join Booking b on b.hotel.id = h.id where h.name = :name group by h.name")
     Long findVisitsByHotelName(String name);
