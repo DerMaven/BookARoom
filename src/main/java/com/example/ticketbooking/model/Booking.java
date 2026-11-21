@@ -55,14 +55,14 @@ public class Booking {
     private BookingStatus status;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinTable(name = "primary_guest_id")
+    @JoinColumn(name = "primary_guest_id")
     private Guest primaryGuest;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "guests",
-            joinColumns = { @JoinColumn(name = "guest_id") },
-            inverseJoinColumns = { @JoinColumn(name = "booking_id") }
+            name = "booking_guests",
+            joinColumns = { @JoinColumn(name = "booking_id") },
+            inverseJoinColumns = { @JoinColumn(name = "guest_id") }
     )
     private List<Guest> guests;
 
