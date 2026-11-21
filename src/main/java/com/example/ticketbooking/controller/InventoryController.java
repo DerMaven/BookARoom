@@ -19,7 +19,7 @@ public class InventoryController {
 
     @GetMapping("/{hotelId}")
     public DailyInventoryDto getTodayAvailability(@PathVariable Long hotelId,
-                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime date,
+                                                  @RequestParam(required = false) @DateTimeFormat(pattern = "dd.MM.yyyy HH:mm:ss") LocalDateTime date,
                                                   HttpServletRequest request) {
         LocalDateTime target = (date != null) ? date : LocalDateTime.now();
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
