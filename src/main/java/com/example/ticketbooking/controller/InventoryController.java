@@ -8,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/inventory")
@@ -19,9 +19,9 @@ public class InventoryController {
 
     @GetMapping("/{hotelId}")
     public DailyInventoryDto getTodayAvailability(@PathVariable Long hotelId,
-                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime date,
                                                   HttpServletRequest request) {
-        LocalDate target = (date != null) ? date : LocalDate.now();
+        LocalDateTime target = (date != null) ? date : LocalDateTime.now();
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return inventoryService.getTodayAvailabilityDto(hotelId, target);
     }
