@@ -9,20 +9,25 @@ import com.example.ticketbooking.repository.BookingRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
-public class  BookingService {
+public class BookingService {
+    @PersistenceContext
+    private EntityManager em;
     private final BookingRepository bookingRepository;
     private final HotelService hotelService;
     private final RoomService roomService;
@@ -39,42 +44,32 @@ public class  BookingService {
 
     private static final List<String> ALLOWED_SORT_FIELDS = new ArrayList<>(List.of("id", "isAvailable", "checkIn", "checkOut", "totalAmount"));
 
+    @Transactional
     public BookingDto createBooking(Long hotelId, Long roomId, Long ratePlanId, Long primaryGuestId, List<Long> guestIds, PaymentMethod paymentMethod, LocalDateTime checkIn, LocalDateTime checkOut) {
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("createBooking");
-        EntityManager em = emf.createEntityManager();
-
-        Optional<Booking> foundByDate = bookingRepository.findByHotelId(hotelId, checkIn, checkOut);
+        Optional<Booking> foundByDate = bookingRepository.findByHotelId(hotelId, roomId, checkIn, checkOut);
+        if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
+            throw new IllegalArgumentException("Некорректные даты заезда и выезда");
+        }
         if (foundByDate.isPresent()) {
             throw new BookingAlreadyExistsException("Бронь на эти даты, в этом отеле, на этот номер, уже существует");
         }
-        if (!roomService.belongsToHotel(hotelId, roomId)) {
+        if (!roomService.belongsToHotel(roomId, hotelId)) {
             throw new RoomNotBelongsToHotelException("Комната не принадлежит к этому отелю");
         }
         if (!roomService.roomsRatePlanBelongsToHotel(hotelId, ratePlanId)) {
             throw new RatePlanNotBelongsToHotelException("Выбранный тариф не принадлежит к этому отелю");
         }
 
-        String tempId = UUID.randomUUID().toString();
+        Long tempId = ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE);
         redisLockService.acquireLock(roomId, Long.valueOf(tempId), checkIn, checkOut);
 
         try {
-            em.getTransaction().begin();
-
             Booking booking = new Booking();
             booking.setStatus(BookingStatus.CREATED);
             booking.setCreatedAt(LocalDateTime.now());
 
             Guest primaryGuest = em.find(Guest.class, primaryGuestId);
             booking.setPrimaryGuest(primaryGuest);
-
-            List<Guest> guests = guestIds.stream()
-                    .map(guestService::getById)
-                    .map(guestService::mapDtoToGuest)
-                            .toList();
-            if (guests.size() > booking.getRoom().getMaxOccupancy()) {
-                throw new RoomMaxOccupancyException("Превышен порог заселения");
-            }
-            booking.setGuests(guests);
 
             Hotel hotel = em.find(Hotel.class, hotelId);
             booking.setHotel(hotel);
@@ -87,6 +82,11 @@ public class  BookingService {
             em.persist(ratePlan);
 
             Room room = em.find(Room.class, roomId);
+
+            if (room == null) {
+                throw new RoomNotFoundException("Комната не была найдена");
+            }
+
             if (room.getStatus() == RoomStatus.OCCUPIED ||
                     room.getStatus() == RoomStatus.MAINTENANCE ||
                     room.getStatus() == RoomStatus.RESERVED ||
@@ -94,10 +94,18 @@ public class  BookingService {
                 throw new RoomNotAvailableException("Комната недоступна");
             }
             booking.setRoom(room);
-
             em.persist(room);
 
-            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getTodayAvailability(hotelId, checkIn));
+            List<Guest> guests = guestIds.stream()
+                    .map(guestService::getById)
+                    .map(guestService::mapDtoToGuest)
+                    .toList();
+            if (guests.size() > booking.getRoom().getMaxOccupancy()) {
+                throw new RoomMaxOccupancyException("Превышен порог заселения");
+            }
+            booking.setGuests(guests);
+
+            DailyInventory inventory = em.find(DailyInventory.class, inventoryService.getTodayAvailability(hotelId, checkIn).getId());
 
             em.persist(inventory);
 
@@ -108,14 +116,14 @@ public class  BookingService {
             em.persist(payment);
 
             if (inventory.getBookingStock() + 1 > inventory.getTotalStock()) {
-                em.getTransaction().rollback();
+                throw new RoomMaxOccupancyException("Свободных мест в инвентаре на текущую дату");
             }
             inventory.setBookingStock(inventory.getBookingStock() + 1);
 
             Currency hotelCurrency = hotelService.getCurrency(hotelId);
             Currency ratePlanCurrency = Currency.valueOf(hotelService.getRatePlan(hotelId, ratePlanId).currency());
             if (!paymentService.isHotelAndRatePlanCurrenciesEqual(hotelCurrency, ratePlanCurrency)) {
-                em.getTransaction().rollback();
+                throw new RuntimeException("Валюта отеля и тарифа не совпадают");
             }
 
             Long nights = (long) getNights(checkIn, checkOut);
@@ -142,78 +150,59 @@ public class  BookingService {
             booking.setCheckOut(checkOut);
 
             em.persist(booking);
-
             em.flush();
-            em.getTransaction().commit();
 
             redisCacheService.set("booking:" + booking.getId(), String.valueOf(booking.getId()), Duration.ofMinutes(2));
             return mapBookingToDto(booking, paymentService.mapPaymentToDto(payment));
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            throw new BookingCreationException("Возникла ошибка при создании брони");
         } finally {
-            em.close();
             redisLockService.releaseLock(roomId, Long.valueOf(tempId), checkIn, checkOut);
         }
     }
 
+    @Transactional
     public BookingDto cancelBooking(Long bookingId, Long guestId) {
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("createBooking");
-        EntityManager em = emf.createEntityManager();
+        Booking booking = em.find(Booking.class, bookingId);
+        Guest guest = em.find(Guest.class, guestId);
 
-
-        try {
-            em.getTransaction().begin();
-
-            Booking booking = em.find(Booking.class, bookingId);
-            Guest guest = em.find(Guest.class, guestId);
-
-            if (!(booking.getStatus() == BookingStatus.CONFIRMED)) {
-                throw new BookingStatusException("Бронь не была подтверждена, чтобы ее отменять");
-            }
-            if (!(Objects.equals(guest.getId(), booking.getPrimaryGuest().getId()))) {
-                throw new BookingNotBelongsToGuestException("Бронь не принадлежит гостю. чтобы он мог ее отменить");
-            }
-
-            DailyInventory inventory = inventoryService.getTodayAvailability(booking.getHotel().getId(), booking.getCheckIn());
-            if ((inventory.getBookingStock() + 1 < 0)) {
-                throw new StockDecrementException("Декрементирование инвентаря невозможно");
-            }
-
-            inventory.setBookingStock(inventory.getBookingStock() - 1);
-
-            em.persist(inventory);
-
-            PaymentDto payment = refundService.getByBookingId(booking.getId());
-
-            Payment refundPayment = new Payment();
-            refundPayment.setAmount(payment.amount());
-            refundPayment.setCurrency(payment.currency());
-            refundPayment.setPaymentMethod(payment.paymentMethod());
-            refundPayment.setStatus(PaymentStatus.REFUNDING);
-
-            refundPayment.setProcessedAt(LocalDateTime.now());
-            em.persist(refundPayment);
-
-            refundService.paymentLayer(refundPayment);
-            refundPayment.setStatus(PaymentStatus.REFUNDED);
-            refundPayment.setBooking(booking);
-            em.merge(refundPayment);
-
-            booking.setStatus(BookingStatus.CANCELLED);
-            em.merge(booking);
-
-            em.flush();
-            em.getTransaction().commit();
-
-            return mapBookingToDto(booking, payment);
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) em.getTransaction().rollback();
-            throw new BookingCancellationException("Возникла ошибка при отмене брони");
-        } finally {
-            em.close();
-            redisCacheService.set("bookings:" + bookingId, String.valueOf(bookingId), Duration.ofMinutes(10));
+        if (!(booking.getStatus() == BookingStatus.CONFIRMED)) {
+            throw new BookingStatusException("Бронь не была подтверждена, чтобы ее отменять");
         }
+        if (!(Objects.equals(guest.getId(), booking.getPrimaryGuest().getId()))) {
+            throw new BookingNotBelongsToGuestException("Бронь не принадлежит гостю. чтобы он мог ее отменить");
+        }
+
+        DailyInventory inventory = inventoryService.getTodayAvailability(booking.getHotel().getId(), booking.getCheckIn());
+        if ((inventory.getBookingStock() + 1 < 0)) {
+            throw new StockDecrementException("Декрементирование инвентаря невозможно");
+        }
+
+        inventory.setBookingStock(inventory.getBookingStock() - 1);
+
+        em.persist(inventory);
+
+        PaymentDto payment = refundService.getByBookingId(booking.getId());
+
+        Payment refundPayment = new Payment();
+        refundPayment.setAmount(payment.amount());
+        refundPayment.setCurrency(payment.currency());
+        refundPayment.setPaymentMethod(payment.paymentMethod());
+        refundPayment.setStatus(PaymentStatus.REFUNDING);
+
+        refundPayment.setProcessedAt(LocalDateTime.now());
+        em.persist(refundPayment);
+
+        refundService.paymentLayer(refundPayment);
+        refundPayment.setStatus(PaymentStatus.REFUNDED);
+        refundPayment.setBooking(booking);
+        em.merge(refundPayment);
+
+        booking.setStatus(BookingStatus.CANCELLED);
+
+        em.merge(booking);
+        em.flush();
+
+        redisCacheService.set("bookings:" + bookingId, String.valueOf(bookingId), Duration.ofMinutes(10));
+        return mapBookingToDto(booking, payment);
     }
 
     public List<BookingDto> getAllByHotelId(Long hotelId,
