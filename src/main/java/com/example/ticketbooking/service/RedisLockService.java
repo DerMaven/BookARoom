@@ -1,7 +1,6 @@
 package com.example.ticketbooking.service;
 
 import com.example.ticketbooking.exception.BookingNotLockedException;
-import com.example.ticketbooking.exception.ReleasingLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -44,23 +43,14 @@ public class RedisLockService {
 
     public void releaseLock(Long roomId, Long bookingId, LocalDateTime checkIn, LocalDateTime checkOut) {
         List<LocalDate> datesToUnlock = getDatesBetween(checkIn, checkOut);
-        List<String> acquiredKeys = new ArrayList<>();
 
-        try {
-            for (LocalDate date: datesToUnlock) {
-                String unlockKey = LOCK_ROOM + ":" + roomId + ":" + date;
-                boolean locked = redisTemplate.opsForValue().setIfAbsent(unlockKey, String.valueOf(bookingId), Duration.ofMinutes(10));
-                if (!locked) {
-                    throw new BookingNotLockedException("Блокирование номера на эти даты не было осуществлено");
-                }
-                acquiredKeys.add(unlockKey);
-            }
+        for (LocalDate date : datesToUnlock) {
+            String lockKey = LOCK_ROOM + ":" + roomId + ":" + date;
+            String currentOwner = redisTemplate.opsForValue().get(lockKey);
 
-            for (String lockKey: acquiredKeys) {
+            if (String.valueOf(bookingId).equals(currentOwner)) {
                 redisTemplate.delete(lockKey);
             }
-        } catch (ReleasingLockException e) {
-            System.out.println("Возникла ошибка с разблокировкой значения, " + e.getMessage());
         }
     }
 
