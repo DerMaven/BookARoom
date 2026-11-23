@@ -28,7 +28,7 @@ public class InventoryService {
             return inventoryCache.get();
         }
 
-        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, date)
+        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, LocalDate.of(date.getYear(), date.getMonth(), date.getDayOfMonth()))
                 .orElseThrow(() -> new InventoryNotFoundException("Инвентарь не был найден"));
 
         redisCacheService.set(cacheKey, inventory, Duration.ofMinutes(2));
@@ -43,7 +43,7 @@ public class InventoryService {
             return inventoryCache.get();
         }
 
-        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, date)
+        DailyInventory inventory = inventoryRepository.findByHotelId(hotelId, date.toLocalDate())
                 .orElseThrow(() -> new InventoryNotFoundException("Инвентарь не был найден"));
 
         DailyInventoryDto dto = mapInventoryToDto(inventory);
