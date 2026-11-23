@@ -4,27 +4,26 @@ import com.example.ticketbooking.dto.BookingDto;
 import com.example.ticketbooking.dto.SortParams;
 import com.example.ticketbooking.model.enums.PaymentMethod;
 import com.example.ticketbooking.service.BookingService;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.Getter;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
-@RequestMapping("booking")
+@RequestMapping("bookings")
 @RequiredArgsConstructor
 @Slf4j
 public class BookingController {
     private final BookingService bookingService;
 
-    @PostMapping("/{hotelId}")
+    @PostMapping("/hotel/{hotelId}")
     public BookingDto create(@PathVariable Long hotelId,
-                             BookingCreateParams params,
+                             @RequestBody BookingCreateParams params,
                              HttpServletRequest request) {
         log.info("Выполнен запрос по эндпоинту: '{} {}', Строка параметров запроса: '{}'", request.getMethod(), request.getRequestURI(), request.getQueryString());
         return bookingService.createBooking(
@@ -74,7 +73,7 @@ public class BookingController {
         );
     }
 
-    @GetMapping("/{guestId}/{bookingId}")
+    @GetMapping("/guest/{guestId}/{bookingId}")
     public BookingDto getByGuestId(@PathVariable Long bookingId,
                                    @PathVariable Long guestId,
                                    HttpServletRequest request) {
@@ -89,23 +88,25 @@ public class BookingController {
         return bookingService.getById(bookingId);
     }
 
-    @Getter
-    @Setter
+    @Data
     public static class BookingCreateParams{
         private Long roomId;
         private Long ratePlanId;
         private Long primaryGuestId;
         private List<Long> guestsIds;
         private PaymentMethod paymentMethod;
+        @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
         private LocalDateTime checkIn;
+        @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
         private LocalDateTime checkOut;
     }
 
-    @Getter
-    @Setter
+    @Data
     public static class BookingGetAllParams{
         private Long id;
+        @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
         private LocalDateTime startTime;
+        @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
         private LocalDateTime endTime;
         private Integer size;
         private String sortBy;
