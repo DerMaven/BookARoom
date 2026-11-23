@@ -2,9 +2,9 @@ package com.example.ticketbooking.repository;
 
 import com.example.ticketbooking.model.DailyInventory;
 import org.springframework.data.domain.Limit;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -17,17 +17,19 @@ public interface DailyInventoryRepository extends JpaRepository<DailyInventory, 
 
     @Query("select di from DailyInventory" +
             " di where di.hotel.id = :hotelId" +
-            " and di.inventoryDate = :date" +
+            " and di.inventoryDate <= :date" +
             " order by di.inventoryDate desc" +
             " limit 1")
-    Optional<DailyInventory> findByHotelId(Long hotelId, LocalDateTime date);
+    Optional<DailyInventory> findByHotelId(@Param(value = "hotelId") Long hotelId,
+                                           @Param(value = "date") LocalDate date);
 
     @Query("select di from DailyInventory di" +
             " where di.hotel.id = :hotelId" +
-            " and di.id = :inventoryId" +
             " and di.inventoryDate >= :startTime" +
             " and di.inventoryDate <= :endTime" +
-            " order by di.inventoryDate asc" +
-            " limit :limit")
-    List<DailyInventory> findAllByHotelId(Long hotelId, LocalDateTime startTime, LocalDateTime endTime, Limit limit);
+            " order by di.inventoryDate")
+    List<DailyInventory> findAllByHotelId(@Param(value = "hotelId") Long hotelId,
+                                          @Param(value = "startTime") LocalDate startTime,
+                                          @Param(value = "endTime") LocalDate endTime,
+                                          Limit limit);
 }
