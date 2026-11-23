@@ -36,8 +36,8 @@ public class DailyInventory {
     @PositiveOrZero
     private Long bookingStock;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "hotel_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hotel_id", nullable = false)
     private Hotel hotel;
 
     @ManyToMany(fetch = FetchType.LAZY)
